@@ -1,0 +1,10 @@
+# rd work-item store (syncs over nostr, not git)
+.ready/
+.ready.fs-backup/
+.ready.old/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
