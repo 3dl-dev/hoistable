@@ -1,0 +1,20 @@
+{
+  "_comment": "Ground-truth sources for EAF's petard cards. Paths are relative to an EAF checkout (pass it as --root). Run: python3 operators/petard/cards.py examples/eaf/petard-cards-spec.json --root <eaf> --out cards.json",
+  "scripts": [
+    "bundle/bin/ensure-user.sh",
+    "bundle/bin/render-env.sh",
+    "bundle/bin/wait-healthy.sh",
+    "bundle/bin/post-up.sh",
+    "deploy/bin/provision-workspace.sh",
+    "deploy/bin/ensure-second-user.sh",
+    "deploy/bin/provision-agent.sh",
+    "deploy/bin/deploy.sh",
+    "deploy/bin/smoke.sh",
+    "deploy/bin/setup-portal.sh"
+  ],
+  "makefiles": ["Makefile"],
+  "helpcards": [
+    "docker compose restart --help",
+    "kubectl rollout restart --help"
+  ]
+}

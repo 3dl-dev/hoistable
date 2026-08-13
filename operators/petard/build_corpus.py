@@ -49,10 +49,12 @@ def build_corpus(sources, timeout=60):
     return corpus
 
 
-def answer(corpus, query):
-    """Retrieval-grounded lookup: return the corpus lines that contain every
-    query term, each with the source command it came from. No generation: a
-    returned line is always a line that is present in the corpus."""
+def answer(corpus, query, top=10):
+    """Retrieval-grounded lookup: return the corpus lines that match the query,
+    ranked by how many query terms they contain (most first), each with the
+    source command it came from. No generation: every returned line is a line
+    that is present in the corpus. A line matching no term is never returned, and
+    when nothing matches the result is empty (petard does not guess)."""
     terms = [t.lower() for t in query.split() if t]
     if not terms:
         return []
@@ -60,9 +62,13 @@ def answer(corpus, query):
     for entry in corpus:
         for line in entry["text"].splitlines():
             s = line.strip()
-            if s and all(t in s.lower() for t in terms):
-                hits.append({"line": s, "from": entry["source_cmd"]})
-    return hits
+            if not s:
+                continue
+            score = sum(1 for t in terms if t in s.lower())
+            if score:
+                hits.append({"line": s, "from": entry["source_cmd"], "score": score})
+    hits.sort(key=lambda h: -h["score"])
+    return hits[:top]
 
 
 def main(argv=None):
@@ -91,7 +97,7 @@ def main(argv=None):
         print("no grounded match. petard does not guess.")
         return 1
     for h in hits:
-        print(f"{h['line']}\n    (from: {h['from']})")
+        print(f"[{h['score']}] {h['line']}\n      (from: {h['from']})")
     return 0
 
 
