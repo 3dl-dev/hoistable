@@ -8,6 +8,7 @@
   "default_profile": "default",
   "profiles": {
     "default": {
+      "isolation": { "none": true, "why": "hermetic: runs agent-dyno's own stdlib self-tests inside a throwaway clone; starts no daemons, binds no host ports, writes no shared state" },
       "preflight": [
         { "name": "python>=3.8",
           "probe": "python3 -c \"import sys; sys.exit(0 if sys.version_info >= (3,8) else 1)\"",

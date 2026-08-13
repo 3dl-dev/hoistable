@@ -29,15 +29,31 @@ what to pull, what the target must provide, and how to know it worked.
   "default_profile": "minimal",
   "profiles": {
     "minimal": {
-      "preflight":  [ { "name": "port-free", "probe": "…", "required": true } ],
+      "isolation": {                             // required for any profile that deploys
+        "namespace_env": "COMPOSE_PROJECT_NAME", // runner sets this to a unique hoist-<app>-<id>
+        "port_envs": ["GATEWAY_PORT"],           // runner assigns each a free host port
+        "collision_probe": "test -z \"$(docker ps -aq --filter label=com.docker.compose.project=$COMPOSE_PROJECT_NAME)\"",
+        "teardown": "docker compose --env-file .env down -v"
+      },
+      "preflight":  [ { "name": "docker-daemon", "probe": "docker info", "required": true } ],
       "bringup":    [ { "name": "compose-up", "run": "docker compose up -d …" } ],
       "health":     [ { "name": "postgres", "check": "pg_isready -h localhost" } ],
-      "acceptance": [ { "name": "attribution", "check": "pytest tests-live/…" } ]
+      "acceptance": [ { "name": "roundtrip", "check": "curl … | grep -q ok" } ]
     }
   }
 }
 ```
 
+A hermetic profile that starts no daemons, binds no host ports, and writes no shared
+state declares `"isolation": {"none": true, "why": "..."}` instead.
+
+- **isolation** — the non-destructive onboarding invariant, enforced here rather than
+  left to each config. A profile with `bringup` MUST declare isolation. The runner
+  owns a fresh namespace (`namespace_env` set to a unique `hoist-<app>-<id>`, each
+  `port_envs` var assigned a free host port), verifies it is empty via `collision_probe`
+  before deploying, and runs `teardown` when done. A deploying profile that declares no
+  isolation is refused, not run. This is why a hoist can never re-assert an app's own
+  singular deployment on a host that already runs it.
 - **binds** — a missing required bind is a `cannot-build`, named, and the run stops at
   the door. This is `hoist`'s "cannot-build: a required bind is missing, by name."
 - **preflight** — cheap probes run before deploy, so the user learns early. A required

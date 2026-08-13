@@ -56,6 +56,7 @@ class EnvelopeOutcomes(unittest.TestCase):
         config = {
             "app": "toy",
             "profiles": {"default": {
+                "isolation": {"none": True, "why": "hermetic toy test"},
                 "bringup": [{"name": "up", "run": "echo up > .up"}],
                 "health": [{"name": "marker", "check": "test -f .up"}],
                 "acceptance": [
@@ -74,6 +75,7 @@ class EnvelopeOutcomes(unittest.TestCase):
         config = {
             "app": "toy",
             "profiles": {"default": {
+                "isolation": {"none": True, "why": "hermetic toy test"},
                 "bringup": [{"name": "up", "run": "true"}],
                 "health": [{"name": "missing", "check": "test -f .never-created"}],
                 "acceptance": [{"name": "x", "check": "true"}],
@@ -89,6 +91,7 @@ class EnvelopeOutcomes(unittest.TestCase):
         config = {
             "app": "toy",
             "profiles": {"default": {
+                "isolation": {"none": True, "why": "hermetic toy test"},
                 "bringup": [{"name": "up", "run": "echo up > .up"}],
                 "health": [{"name": "marker", "check": "test -f .up"}],
                 "acceptance": [
@@ -101,6 +104,45 @@ class EnvelopeOutcomes(unittest.TestCase):
         self.assertEqual(r["outcome"], "built")
         self.assertEqual(r["transfer_score"], 1.0)
         self.assertEqual(r["did_not_transfer"], [])
+
+    def test_refuses_bringup_without_isolation(self):
+        # The non-destructive onboarding invariant: a deploying profile that
+        # declares no isolation is rejected, never run.
+        config = {
+            "app": "toy",
+            "profiles": {"default": {
+                "bringup": [{"name": "up", "run": "true"}],
+                "acceptance": [{"name": "x", "check": "true"}],
+            }},
+        }
+        r = envelope.run_envelope(config, _target())
+        self.assertEqual(r["outcome"], "cannot-build")
+        self.assertIn("isolation", r["reason"])
+        self.assertEqual(r["bringup"], [])  # never deployed
+
+    def test_isolation_injects_namespace_and_tears_down(self):
+        d = _target()
+        config = {
+            "app": "toy",
+            "profiles": {"default": {
+                "isolation": {
+                    "namespace_env": "MYNS",
+                    "port_envs": ["MYPORT"],
+                    "collision_probe": "true",
+                    "teardown": "rm -f ns-marker",
+                },
+                "bringup": [{"name": "up", "run": "echo $MYNS > ns-marker"}],
+                "health": [{"name": "marker", "check": "test -f ns-marker"}],
+                "acceptance": [{"name": "ns-used", "check": "grep -q hoist-toy- ns-marker"}],
+            }},
+        }
+        r = envelope.run_envelope(config, d)
+        self.assertEqual(r["outcome"], "built")
+        self.assertTrue(r["isolation"]["namespace"].startswith("hoist-toy-"))
+        self.assertIsInstance(r["isolation"]["ports"]["MYPORT"], int)
+        self.assertTrue(r["teardown"]["ok"])
+        # teardown removed the marker: the target is left as it was found
+        self.assertFalse(os.path.exists(os.path.join(d, "ns-marker")))
 
 
 if __name__ == "__main__":

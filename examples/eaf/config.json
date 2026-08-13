@@ -11,29 +11,29 @@
   "default_profile": "minimal",
   "profiles": {
     "minimal": {
+      "isolation": {
+        "namespace_env": "COMPOSE_PROJECT_NAME",
+        "port_envs": ["GATEWAY_PORT", "FAKEPROVIDER_PORT", "CONTROL_PLANE_PORT"],
+        "collision_probe": "test -z \"$(docker ps -aq --filter label=com.docker.compose.project=$COMPOSE_PROJECT_NAME)\"",
+        "teardown": "cd bundle && docker compose -f docker-compose.yml --env-file .env down -v"
+      },
       "preflight": [
-        { "name": "docker-daemon-reachable", "probe": "docker info >/dev/null 2>&1", "required": true },
-        { "name": "no-colliding-eai-project",
-          "probe": "test -z \"$(docker ps -aq --filter label=com.docker.compose.project=enterprise-ai)\"",
-          "required": true },
-        { "name": "host-ports-free-4000-8090-8081",
-          "probe": "python3 -c \"import socket,sys; used=[p for p in (4000,8090,8081) if socket.socket().connect_ex(('127.0.0.1',p))==0]; sys.exit(1 if used else 0)\"",
-          "required": true }
+        { "name": "docker-daemon-reachable", "probe": "docker info >/dev/null 2>&1", "required": true }
       ],
       "bringup": [
         { "name": "render-env", "run": "cd bundle && bash bin/render-env.sh" },
         { "name": "render-gateway-config", "run": "cd bundle && (python3 bin/render-gateway-config.py || (python3 -m venv .venv-render && .venv-render/bin/pip -q install pyyaml && .venv-render/bin/python bin/render-gateway-config.py))" },
-        { "name": "compose-up-minimal-5", "run": "cd bundle && docker compose -f docker-compose.yml --env-file .env up -d --build --wait --wait-timeout 600 --no-deps postgres valkey fakeprovider gateway control-plane" }
+        { "name": "compose-up-isolated-5", "run": "cd bundle && docker compose -f docker-compose.yml --env-file .env up -d --build --wait --wait-timeout 600 --no-deps postgres valkey fakeprovider gateway control-plane" }
       ],
       "health": [
         { "name": "postgres", "check": "cd bundle && docker compose -f docker-compose.yml --env-file .env exec -T postgres pg_isready -U eai -d postgres" },
         { "name": "valkey", "check": "cd bundle && docker compose -f docker-compose.yml --env-file .env exec -T valkey valkey-cli ping" },
-        { "name": "fakeprovider", "check": "curl -fsS http://localhost:8090/health" },
-        { "name": "gateway-liveliness", "check": "curl -fsS http://localhost:4000/health/liveliness" },
-        { "name": "control-plane", "check": "curl -fsS http://localhost:8081/health" }
+        { "name": "fakeprovider", "check": "curl -fsS http://localhost:$FAKEPROVIDER_PORT/health" },
+        { "name": "gateway-liveliness", "check": "curl -fsS http://localhost:$GATEWAY_PORT/health/liveliness" },
+        { "name": "control-plane", "check": "curl -fsS http://localhost:$CONTROL_PLANE_PORT/health" }
       ],
       "acceptance": [
-        { "name": "gateway-fakeprovider-roundtrip", "check": "cd bundle && MASTER=$(grep '^GATEWAY_MASTER_KEY=' .env | cut -d= -f2) && KEY=$(curl -s localhost:4000/key/generate -H \"Authorization: Bearer $MASTER\" -H 'Content-Type: application/json' -d '{\"key_alias\":\"hoist-smoke\"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)[\"key\"])') && curl -s localhost:4000/v1/chat/completions -H \"Authorization: Bearer $KEY\" -H 'Content-Type: application/json' -d '{\"model\":\"fake-gpt-large\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}]}' | grep -q fake-provider" },
+        { "name": "gateway-fakeprovider-roundtrip", "check": "cd bundle && MASTER=$(grep '^GATEWAY_MASTER_KEY=' .env | cut -d= -f2) && KEY=$(curl -s localhost:$GATEWAY_PORT/key/generate -H \"Authorization: Bearer $MASTER\" -H 'Content-Type: application/json' -d '{\"key_alias\":\"hoist-smoke\"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)[\"key\"])') && RESP=$(curl -s localhost:$GATEWAY_PORT/v1/chat/completions -H \"Authorization: Bearer $KEY\" -H 'Content-Type: application/json' -d '{\"model\":\"fake-large\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}]}') && echo \"$RESP\" && echo \"$RESP\" | grep -q fake-provider" },
         { "name": "portal-auth-unit", "check": "python3 -m venv /home/baron/.claude/jobs/a2160512/tmp/eaf-acc-venv && /home/baron/.claude/jobs/a2160512/tmp/eaf-acc-venv/bin/pip -q install pytest httpx 'fastapi==0.118.0' websockets uvicorn 'pyjwt[crypto]' pymongo pyyaml && /home/baron/.claude/jobs/a2160512/tmp/eaf-acc-venv/bin/pytest control-plane/tests/test_portal_auth.py -q" }
       ]
     }

@@ -29,9 +29,11 @@ import argparse
 import json
 import os
 import shlex
+import socket
 import subprocess
 import sys
 import tempfile
+import uuid
 
 
 DEFAULT_TIMEOUT = 600
@@ -54,6 +56,16 @@ def _run(cmd, cwd, timeout=DEFAULT_TIMEOUT, env=None):
 
 def _step_list(profile, key):
     return profile.get(key, []) or []
+
+
+def _free_port():
+    """Ask the OS for an unused host port so an isolated hoist never fights an
+    existing instance for a fixed port."""
+    s = socket.socket()
+    s.bind(("", 0))
+    port = s.getsockname()[1]
+    s.close()
+    return port
 
 
 def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT):
@@ -129,6 +141,45 @@ def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT)
             report["detail"] = tail
             return report
 
+    # --- isolation: onboarding must never touch pre-existing target state ---
+    # The non-destructive onboarding invariant, enforced structurally. A profile
+    # that deploys MUST declare isolation. The runner then owns a fresh namespace
+    # (a unique name, its own host ports) and refuses to proceed unless that
+    # namespace is verified empty. A deploying profile that declares no isolation
+    # is REJECTED, never run: this is the guard that stops a hoist from
+    # re-asserting an app's own singular deployment on a host that already runs
+    # it. A genuinely hermetic profile must say so on purpose, with a reason.
+    iso = profile.get("isolation")
+    has_bringup = bool(_step_list(profile, "bringup"))
+    if has_bringup and iso is None:
+        report["outcome"] = "cannot-build"
+        report["reason"] = (
+            "refusing to deploy: profile has bringup but declares no isolation. "
+            "Declare a namespace mapping, or isolation:{\"none\":true,\"why\":...} "
+            "if it starts no daemons, binds no host ports, and writes no shared state."
+        )
+        return report
+    isolate = bool(iso) and not iso.get("none")
+    if iso and iso.get("none"):
+        report["isolation"] = {"none": True, "why": iso.get("why", "")}
+    if isolate:
+        namespace = f"hoist-{app}-{uuid.uuid4().hex[:8]}"
+        report["isolation"] = {"namespace": namespace, "ports": {}}
+        if iso.get("namespace_env"):
+            run_env[iso["namespace_env"]] = namespace
+        for pe in iso.get("port_envs", []):
+            port = _free_port()
+            run_env[pe] = str(port)
+            report["isolation"]["ports"][pe] = port
+        probe = iso.get("collision_probe")
+        if probe:
+            rc, tail = _run(probe, cwd=workdir, timeout=timeout, env=run_env)
+            if rc != 0:
+                report["outcome"] = "cannot-build"
+                report["reason"] = f"isolation collision: namespace {namespace} is not clean"
+                report["detail"] = tail
+                return report
+
     # --- bringup: the install gate -----------------------------------------
     bringup_ok = True
     for s in _step_list(profile, "bringup"):
@@ -187,6 +238,14 @@ def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT)
     else:
         report["outcome"] = "honest-failure"
         report["reason"] = "came up, but not everything transferred"
+
+    # --- teardown: a hoist leaves the target as it found it -----------------
+    # Always tear down the isolated namespace once graded, whatever the outcome,
+    # so onboarding adds nothing lasting and removes nothing it did not create.
+    if isolate and iso.get("teardown") and has_bringup:
+        rc, tail = _run(iso["teardown"], cwd=workdir, timeout=timeout, env=run_env)
+        report["teardown"] = {"ran": True, "ok": rc == 0,
+                              **({} if rc == 0 else {"detail": tail})}
     return report
 
 

@@ -61,6 +61,9 @@ config includes only the operators that project needs.
   or providing its own. sysop **composes external skills** for everything
   infra-specific (AWS, Azure, DigitalOcean, local VM, SSL and certs, SSO, security
   monitoring) instead of internalizing that knowledge. Product-specific run-time
+  It deploys into an isolated namespace the runner owns (its own name, ports, and
+  storage), never the app's own singular deployment, per the non-destructive
+  onboarding invariant below. Product-specific run-time
   operations are sysop scope too: agent-dyno distributing its anonymized,
   technique-only leaderboard is sysop work inside that product, not a separate
   operator. (Note: agent-dyno's constitution forbids ranking or comparing
@@ -100,6 +103,24 @@ leaderboard or an Agent Dyno run. Hoistable emits the number; it never depends o
 thing that grades it. This is the same envelope as skillc (recipe, rebuild on install,
 self-test, honest score), carried by every hoistable config rather than published as a
 separate scoring skill.
+
+## The non-destructive onboarding invariant
+
+Onboarding an app onto a target never mutates or collides with anything already
+there. Hoisting an app is not re-running the app's own deployment. An app's bundled
+orchestration assumes it is the only instance on the box, so replaying it on a host
+that already runs the app would stomp the live one. Instead, every hoist deploys into
+a fresh namespace the runner owns: its own name, its own host ports, its own storage.
+The runner verifies that namespace is empty before it deploys, tears it down when
+done, and refuses to deploy at all if a profile does not declare how it isolates. A
+profile that genuinely touches no shared state, such as a hermetic self-test in a
+throwaway clone, must say so on purpose, with a reason. There is no silent path that
+deploys without isolation.
+
+This is enforced in the grader, not left to each config to remember. It was learned
+the hard way: a first EAF hoist replayed EAF's own compose, whose fixed project name
+and host ports made a fresh clone attach to a live `enterprise-ai` stack and recreate
+its containers. The invariant exists so that can never happen again.
 
 ## Distribution and repeatability
 
