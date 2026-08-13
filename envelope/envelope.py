@@ -37,12 +37,12 @@ import tempfile
 DEFAULT_TIMEOUT = 600
 
 
-def _run(cmd, cwd, timeout=DEFAULT_TIMEOUT):
+def _run(cmd, cwd, timeout=DEFAULT_TIMEOUT, env=None):
     """Run a shell command, return (rc, tail-of-output)."""
     try:
         p = subprocess.run(
             cmd, shell=True, cwd=cwd, timeout=timeout,
-            capture_output=True, text=True,
+            capture_output=True, text=True, env=env,
         )
         out = (p.stdout or "") + (p.stderr or "")
         return p.returncode, out.strip()[-2000:]
@@ -71,6 +71,12 @@ def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT)
         }
     profile = profiles[profile_name]
     app = config.get("app", "?")
+    # Env overrides let a config isolate its deployment namespace (a unique
+    # COMPOSE_PROJECT_NAME, remapped host ports) so a same-host hoist cannot
+    # collide with an already-running instance. Applied to every step.
+    run_env = dict(os.environ)
+    for src in (config.get("env", {}), profile.get("env", {})):
+        run_env.update({k: str(v) for k, v in src.items()})
     report = {
         "app": app,
         "profile": profile_name,
@@ -84,7 +90,7 @@ def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT)
 
     # --- binds: missing required capability -> cannot-build, named, stop -----
     for b in config.get("binds", []):
-        rc, tail = _run(b["probe"], cwd=target_dir, timeout=timeout)
+        rc, tail = _run(b["probe"], cwd=target_dir, timeout=timeout, env=run_env)
         ok = rc == 0
         report["binds"].append({"name": b["name"], "ok": ok})
         if not ok and b.get("required", True):
@@ -101,7 +107,7 @@ def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT)
         dest = os.path.join(target_dir, sub)
         if not os.path.isdir(dest):
             rc, tail = _run(f"git clone {shlex.quote(src['clone'])} {shlex.quote(dest)}",
-                            cwd=target_dir, timeout=timeout)
+                            cwd=target_dir, timeout=timeout, env=run_env)
             if rc != 0:
                 report["outcome"] = "cannot-build"
                 report["reason"] = "clone failed"
@@ -114,7 +120,7 @@ def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT)
 
     # --- preflight: cheap probes before deploy, know early ------------------
     for p in _step_list(profile, "preflight"):
-        rc, tail = _run(p["probe"], cwd=workdir, timeout=timeout)
+        rc, tail = _run(p["probe"], cwd=workdir, timeout=timeout, env=run_env)
         ok = rc == 0
         report["preflight"].append({"name": p["name"], "ok": ok})
         if not ok and p.get("required", True):
@@ -126,9 +132,11 @@ def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT)
     # --- bringup: the install gate -----------------------------------------
     bringup_ok = True
     for s in _step_list(profile, "bringup"):
-        rc, tail = _run(s["run"], cwd=workdir, timeout=timeout)
+        rc, tail = _run(s["run"], cwd=workdir, timeout=timeout, env=run_env)
         ok = rc == 0
-        report["bringup"].append({"name": s["name"], "ok": ok})
+        report["bringup"].append(
+            {"name": s["name"], "ok": ok, **({} if ok else {"detail": tail})}
+        )
         if not ok:
             bringup_ok = False
             report["did_not_transfer"].append(f"bringup:{s['name']}")
@@ -139,9 +147,11 @@ def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT)
     if bringup_ok:
         for h in _step_list(profile, "health"):
             health_total += 1
-            rc, tail = _run(h["check"], cwd=workdir, timeout=timeout)
+            rc, tail = _run(h["check"], cwd=workdir, timeout=timeout, env=run_env)
             ok = rc == 0
-            report["health"].append({"name": h["name"], "ok": ok})
+            report["health"].append(
+                {"name": h["name"], "ok": ok, **({} if ok else {"detail": tail})}
+            )
             if ok:
                 health_up += 1
             else:
@@ -155,7 +165,7 @@ def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT)
     if install_up:
         for c in _step_list(profile, "acceptance"):
             acc_total += 1
-            rc, tail = _run(c["check"], cwd=workdir, timeout=timeout)
+            rc, tail = _run(c["check"], cwd=workdir, timeout=timeout, env=run_env)
             ok = rc == 0
             report["acceptance"].append(
                 {"name": c["name"], "ok": ok, **({} if ok else {"detail": tail})}
