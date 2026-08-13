@@ -10,6 +10,11 @@ contract per adjacent pair. A project specifies a contract only when both of its
 operators are present: a product with no develop operator has no develop-to-preflight
 contract to write, and its chain begins at preflight.
 
+Alongside the chain there is one shared artifact both sysop and petard bind to: the
+substrate handle (see "The substrate handle" below). sysop deploys the app into it;
+petard harvests ground truth out of it. It is not a contract between one pair, it is
+the place the work happens, resolved per target.
+
 ## Contract A: develop to preflight (the deployable artifact)
 
 What feature work emits and deployment scoping consumes.
@@ -25,12 +30,16 @@ What feature work emits and deployment scoping consumes.
 The boundary between deciding the deployment and executing it.
 
 - **preflight writes it**: after working with the user, it fixes the dimensions of the
-  deployment, scale, single- vs multi-tenant, dev vs prod, the infra target, and which
-  external skills the deployment will need. This is the human-in-the-loop decision,
-  made once and written down. It carries develop's artifact and config surface forward,
-  so sysop has a single inbound handoff. It also carries a feasibility verdict:
-  preflight probed the target for the known long-tail gaps and recorded what will work
-  and what will block, so sysop is not the first to discover a blocker.
+  deployment, scale, single- vs multi-tenant, dev vs prod, the infra target, the
+  isolation strength the deploy needs (a same-host namespace, or an environmental
+  substrate where a deploy cannot reach host state), and which external skills the
+  deployment will need. This is the human-in-the-loop decision, made once and written
+  down. It carries develop's artifact and config surface forward, so sysop has a single
+  inbound handoff. It also carries a feasibility verdict: preflight probed the target
+  for the known long-tail gaps, including which isolation substrate the target offers,
+  and recorded what will work and what will block, so sysop is not the first to
+  discover a blocker. A required isolation strength that no substrate on the target can
+  meet is one of those blockers, named at the door.
 - **sysop reads it**: it takes the plan as given and chases it down. It does not
   re-litigate the dimensions; those were settled at preflight.
 
@@ -51,6 +60,12 @@ lights-out layer.
 - **The corpus is the asset**: the local model is weak, swappable, almost incidental.
   What determines whether the petard works is the freshness and coverage of this
   index.
+- **Harvested through the substrate handle**: the ground truth petard indexes lives in
+  the running instance, and the instance may run inside a resolved substrate (a
+  container, a VM, a cluster Job), not on the host. So the harvest that keeps the corpus
+  fresh runs through the same substrate handle sysop deployed into: a `--help` dump or a
+  schema introspection is an `exec` into the substrate, not a host subprocess. Without
+  the handle, contract C has no path to the ground truth of a sandboxed deploy.
 
 ## The petard grounding invariant
 
@@ -69,3 +84,32 @@ output must be retrieval grounded.**
   inventing them.
 
 A petard that lies is worse than no petard. This invariant is what keeps it honest.
+
+## The substrate handle
+
+Where a hoist runs is not a dependency, it is a resolved bind. The same verb the rest
+of Hoistable runs on (a config ref resolves, operator pins resolve, a secret resolves
+on the target) applies to isolation: a profile names the strength it needs, and the
+runner resolves the strongest rung the target offers, or reports cannot-build. The
+implementation is `envelope/substrate.py`; the contract is four things:
+
+    provision()  ->  stand up a throwaway place to run (or nothing, for the host).
+    exec(cmd)    ->  run one step there, return its result.
+    teardown()   ->  destroy it; a hoist leaves the target as it found it.
+    workroot     ->  the base dir a clone and deploy happen under, in that place.
+
+- **The host is the floor rung**: exec is a plain subprocess, and the isolation is only
+  as strong as the config's own declared namespace, so a deploy that ignores it can
+  still reach host state. A stronger rung (docker-in-docker today; rootless podman, a
+  user-namespace sandbox, a burnable VM, a cluster Job next) runs the steps somewhere a
+  deploy cannot reach host state, whatever the config declares. A new rung is a new
+  adapter in `substrate.py`, never a fork of the grader, and the knowledge of how to
+  drive it lives in the adapter, not the core (point, don't embed).
+- **Both operators bind to it, which is why it is shared, not paired**: sysop resolves
+  it and deploys into it (the isolation is environmental, not left to a config to
+  honor); petard harvests ground truth out of it (contract C). One handle, two
+  operators.
+- **The strength is reported, never assumed**: the guarantee is only as strong as the
+  rung that resolved. A resolution records which rung it got, and a replay re-probes and
+  re-resolves rather than trusting that record (see the resolution store,
+  `hoist/resolutions.py`): the environment is re-derived, never remembered.

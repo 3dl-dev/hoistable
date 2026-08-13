@@ -47,6 +47,39 @@ what to pull, what the target must provide, and how to know it worked.
 A hermetic profile that starts no daemons, binds no host ports, and writes no shared
 state declares `"isolation": {"none": true, "why": "..."}` instead.
 
+## Where a hoist runs: the substrate, resolved not depended on
+
+The grader does not care *where* the config's steps run. That "where" is a resolved
+bind, the same verb the rest of Hoistable runs on (a config ref resolves
+path→index→URL, operators resolve pin→local, a secret resolves on the target).
+Isolation is the same: a profile names the *strength* it needs, and the runner
+resolves the strongest rung the target actually offers.
+
+```jsonc
+"isolation": { "require": "environmental" }   // or omit / "host" for the floor
+```
+
+- **`host` (default)**: run on this machine. The isolation is only as strong as the
+  config's own declared namespace (`namespace_env` + `port_envs`), so a deploy that
+  ignores it can still reach host state. This is the floor rung, and today's behavior.
+- **`environmental`**: run where a deploy *cannot* reach host state, whatever the
+  config declares. The runner resolves down a ladder (dind here; rootless podman, a
+  user-namespace sandbox, a burnable VM, a k3s Job are the next rungs) and provisions
+  the first that answers. A file the deploy writes lands in the throwaway container; a
+  container it starts or kills lives on an inner daemon the host never sees. Teardown
+  destroys the substrate, and the environmental blast radius is verified by the
+  substrate's own residue: after teardown no host resource of ours remains. This is
+  checked one level up from the config's own isolation, so it holds even for a config
+  that ignores that block, and it is scoped to our footprint rather than a full
+  host-daemon diff, so unrelated containers churning on a shared host never register
+  as a false violation.
+
+If an environmental rung is required and none resolves on the target, that is a
+`cannot-build`, named at the door — an unresolved bind, not a crash. See
+`substrate.py`; a new rung is a new adapter there, never a fork of the grader
+(build-rule 2), and the knowledge of how to drive it lives in the adapter, not here
+(build-rule 6, point don't embed).
+
 - **isolation**: the non-destructive onboarding invariant, enforced here rather than
   left to each config. A profile with `bringup` MUST declare isolation. The runner
   owns a fresh namespace (`namespace_env` set to a unique `hoist-<app>-<id>`, each

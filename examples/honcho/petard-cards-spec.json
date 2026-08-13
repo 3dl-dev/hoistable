@@ -1,0 +1,14 @@
+{
+  "_comment": "Ground-truth sources for honcho's petard cards. honcho's operational surface is docker compose (it ships a compose stack: api, database, redis, deriver), so the operator's command surface is the compose subcommands, harvested live from INSIDE the running deploy. The helpcards run in the substrate at the honcho checkout (/work/honcho in dind), where `docker compose` operates honcho's own stack. Build: cards.build_cards(spec, root='<checkout>', run=build_corpus.substrate_runner(sub, '<checkout>')). Repo-specific scripts can be added to `scripts` once a checkout is inspected; the compose surface below is honcho's real day-to-day ops and needs no repo paths.",
+  "scripts": [],
+  "makefiles": [],
+  "helpcards": [
+    "docker compose restart --help",
+    "docker compose logs --help",
+    "docker compose ps --help",
+    "docker compose stop --help",
+    "docker compose start --help",
+    "docker compose exec --help",
+    "docker compose down --help"
+  ]
+}

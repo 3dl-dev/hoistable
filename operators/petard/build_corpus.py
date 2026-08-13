@@ -27,19 +27,41 @@ import subprocess
 import sys
 
 
-def build_corpus(sources, timeout=60):
+def _host_run(cmd, timeout):
+    """Run a command on the host and return (rc, text). The default harvester."""
+    try:
+        p = subprocess.run(cmd, shell=True, capture_output=True,
+                          text=True, timeout=timeout)
+        return p.returncode, (p.stdout or "") + (p.stderr or "")
+    except subprocess.TimeoutExpired:
+        return 124, f"(timed out after {timeout}s)"
+    except Exception as e:  # noqa: BLE001
+        return 127, f"(could not run: {e})"
+
+
+def substrate_runner(sub, cwd, env=None):
+    """A runner that harvests ground truth from INSIDE a resolved substrate instead
+    of the host: contract C. `sub` is an envelope substrate handle
+    (substrate.exec(cmd, cwd, env, timeout) -> (rc, tail)); this adapts it to the
+    (cmd, timeout) -> (rc, text) shape build_corpus expects. When the deploy lives
+    in dind, a VM, or a cluster, the corpus is built from the command surface of
+    what is actually running there, with no host access."""
+    return lambda cmd, timeout=60: sub.exec(cmd, cwd, env or {}, timeout)
+
+
+def build_corpus(sources, timeout=60, run=None):
     """sources: list of {name, cmd}. Runs each cmd and captures its output as a
     corpus entry whose provenance IS the command. Hand-written text is never
-    accepted: the only way in is to run something and harvest what it says."""
+    accepted: the only way in is to run something and harvest what it says.
+
+    run is the command runner, (cmd, timeout) -> (rc, text). It defaults to the
+    host (_host_run); pass substrate_runner(sub, cwd) to harvest from inside a
+    resolved substrate (contract C) so the corpus reflects the live deploy, not the
+    host."""
+    run = run or _host_run
     corpus = []
     for s in sources:
-        try:
-            p = subprocess.run(s["cmd"], shell=True, capture_output=True,
-                               text=True, timeout=timeout)
-            text = (p.stdout or "") + (p.stderr or "")
-            rc = p.returncode
-        except subprocess.TimeoutExpired:
-            text, rc = f"(timed out after {timeout}s)", 124
+        rc, text = run(s["cmd"], timeout)
         corpus.append({
             "name": s["name"],
             "source_cmd": s["cmd"],   # provenance: how this entry was generated

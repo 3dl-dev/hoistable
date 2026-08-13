@@ -9,6 +9,7 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "operators", "petard"))
 import cards  # noqa: E402
+import build_corpus  # noqa: E402
 
 
 class Cards(unittest.TestCase):
@@ -51,6 +52,60 @@ class Cards(unittest.TestCase):
             f.write("#!/bin/sh\n# does a thing\n# Usage: x.sh --flag VALUE\ntrue\n")
         c = cards.extract_script_card(p)
         self.assertEqual(c["command"], "x.sh --flag VALUE")
+
+
+class HarvestThroughSubstrate(unittest.TestCase):
+    """Contract C: the corpus is harvested THROUGH a resolved substrate handle, so
+    it reflects the live deploy (dind / VM / cluster), never the host. The proof is
+    that a command which would succeed on the HOST is NOT captured when the harvest
+    is routed through an inside-the-substrate runner."""
+
+    @staticmethod
+    def _inside_run(cmd, timeout=60):
+        # simulates exec INSIDE a substrate: it knows only the deploy's own tools,
+        # and cannot see the host. 'echo HOSTSIDE' would trivially succeed on the
+        # host; inside the substrate this stand-in does not resolve it.
+        if "inside-tool" in cmd:
+            return 0, "Usage: inside-tool restart <svc>\nRestart a service in place"
+        return 127, "sh: not found (inside substrate)"
+
+    def test_build_corpus_uses_the_injected_runner_not_the_host(self):
+        sources = [
+            {"name": "inside", "cmd": "inside-tool --help"},
+            {"name": "host-marker", "cmd": "echo HOSTSIDE"},
+        ]
+        corpus = build_corpus.build_corpus(sources, run=self._inside_run)
+        blob = "\n".join(e["text"] for e in corpus)
+        self.assertIn("Restart a service", blob)          # harvested from inside
+        self.assertNotIn("HOSTSIDE", blob)                # did NOT fall back to host
+        marker = next(e for e in corpus if e["name"] == "host-marker")
+        self.assertEqual(marker["rc"], 127)               # not resolvable inside
+
+    def test_help_card_harvested_through_injected_runner(self):
+        c = cards.extract_help_card("inside-tool --help", run=self._inside_run)
+        self.assertEqual(c["command"], "inside-tool restart <svc>")
+        self.assertIn("Restart", c["purpose"])
+        # a command absent inside yields no card (petard does not fabricate one)
+        self.assertIsNone(cards.extract_help_card("echo HOSTSIDE", run=self._inside_run))
+
+    def test_substrate_runner_routes_to_sub_exec(self):
+        class FakeSub:
+            def __init__(self):
+                self.calls = []
+            def exec(self, cmd, cwd, env, timeout):
+                self.calls.append((cmd, cwd))
+                return 0, f"ran {cmd} in {cwd}"
+        sub = FakeSub()
+        run = build_corpus.substrate_runner(sub, "/work/honcho")
+        rc, text = run("docker compose ps", 30)
+        self.assertEqual(rc, 0)
+        self.assertIn("/work/honcho", text)
+        self.assertEqual(sub.calls, [("docker compose ps", "/work/honcho")])
+
+    def test_default_harvest_still_runs_on_the_host(self):
+        # back-compat: with no runner injected, harvest runs on the host.
+        corpus = build_corpus.build_corpus([{"name": "e", "cmd": "echo HOSTSIDE"}])
+        self.assertIn("HOSTSIDE", corpus[0]["text"])
 
 
 if __name__ == "__main__":

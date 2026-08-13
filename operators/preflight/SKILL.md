@@ -15,6 +15,8 @@ Fix the dimensions of the deployment by asking, not assuming:
 - tenancy (single- or multi-tenant)
 - environment (dev or prod)
 - infra target (local VM, AWS, Azure, DigitalOcean, an existing cluster)
+- isolation strength (a same-host namespace, or an environmental substrate where a
+  deploy cannot reach host state; the latter for an app not hoisted here before)
 - which external skills the target needs (the infra sysop will compose)
 
 Read the app's config surface (contract A, from develop) to know which knobs are yours
@@ -27,9 +29,12 @@ Run the know-early pass:
     python3 envelope/envelope.py <config> --profile <chosen> --until preflight
 
 It checks the required binds, the feasibility probes (platform, versions, deps,
-reachability, secret availability), and that the target is clean, then stops before
-deploy. Its verdict is feasible or cannot-build, with the blocker named. Give the user
-that verdict at the door, not three services deep.
+reachability, secret availability), which isolation substrate the target offers for the
+required strength, and that the target is clean, then stops before deploy. It provisions
+nothing: the environmental substrates are probed for feasibility, not stood up. Its
+verdict is feasible or cannot-build, with the blocker named (a required isolation
+strength no substrate on the target can meet is one such blocker). Give the user that
+verdict at the door, not three services deep.
 
 ## Emit
 

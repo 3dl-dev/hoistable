@@ -154,8 +154,30 @@ turns tokens into surviving work. Hoistable **manufactures and operates**. The
 relation is one-way: the dyno can measure a Hoistable run; Hoistable never depends on
 the dyno.
 
+## Working on Hoistable
+
+The **operating posture** — how to think while building this, not just what it is —
+is `CLAUDE.md`. It is short and load-bearing: you are the operator (the four roles are
+agent roles, not programs); resolve against the target and author missing pieces
+just-in-time rather than pre-building a menu; grade against reality; state plainly what
+is built-and-tested versus designed. Read it before adding to the repo.
+
 ## Status
 
-Founding spec. The thesis, the three layers, the `hoist` entry point, the four
-operators, and the three contracts are captured. The generators, the operator
-release, the index, and the acceptance tests are not built yet.
+Working core with a live frontier, graded against real infrastructure.
+
+**Built and tested (against real dind, a real k3s cluster, a real sandbox):** the
+honest-grade envelope; the isolation substrate as a resolved bind, with three rungs
+each *authored by the loop* — `dind` (environmental), `k3s` (cluster), `systemd`
+(confined); the operators, with sysop's operate/LOM driver and petard's grounded,
+refuses-to-invent translation; `hoist` (preflight + deploy + grade); the app **bundle
+builder** (ships itself, self-grades on a clean target, pins operators rather than
+vendoring); the **resolution store** (persist and share a resolution as a replayable
+recipe). honcho hoists build → run → LOM end to end in a sandbox; a dispatched sysop
+authored a new rung by skill, proving the loop is a skill an agent runs, not a script.
+
+**Designed, not yet built** (see `docs/ops-substrate.md`): the resolver **strength
+model** (host-safety vs infra-type, so authored rungs like k3s/systemd become
+*resolvable*, not just usable); the **cost spine** (estimate → reconcile → no silent
+spend); the ops substrate as a hoisted rung (build infra up from the primordial); cloud
+rungs; the operator release + index.

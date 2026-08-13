@@ -1,6 +1,6 @@
 ---
 name: sysop
-description: Take preflight's scoped plan and stand the app up on the target, then operate it. Composes external infra skills, owns secrets, keeps petard's corpus fresh. Deploys into an isolated namespace, never the app's own.
+description: Take preflight's scoped plan and stand the app up on the target, then operate it. Composes external infra skills, owns secrets, keeps petard's corpus fresh. Deploys into a resolved isolation substrate (a same-host namespace, or an environmental sandbox where a deploy cannot reach host state), never the app's own.
 ---
 
 sysop takes the settled plan and chases it down: deploy, operate day to day, and be the
@@ -8,9 +8,7 @@ one who owns the secrets.
 
 ## Deploy, in isolation
 
-Deploy by running the config's chosen profile through the envelope, which owns a fresh
-namespace per hoist (its own name, ports, storage), verifies the namespace is empty,
-and can tear it down:
+Deploy by running the config's chosen profile through the envelope:
 
     python3 envelope/envelope.py <config> --profile <chosen>
 
@@ -18,6 +16,52 @@ sysop never re-runs the app's own singular deployment. That is the non-destructi
 onboarding invariant, enforced by the runner: a profile that deploys must declare
 isolation or it is refused. Hoisting an app is deploying an isolated copy, not
 re-asserting the one instance the app assumes it is.
+
+Isolation is resolved, not fixed. The profile names the strength it needs, and the
+runner resolves the strongest rung the target offers:
+
+- **The host floor**: the envelope owns a fresh namespace per hoist (its own name,
+  ports, storage), verifies the namespace is empty, and tears it down. This is a
+  same-host copy, so the isolation is only as strong as that namespace.
+- **An environmental substrate** (`isolation.require: "environmental"`): the deploy
+  runs inside a throwaway container, VM, or cluster Job where it cannot reach host
+  state whatever the config declares, resolved down a ladder (docker-in-docker today).
+  Use it for an app you have not hoisted before, where a fresh clone is not a clean
+  target. If the target offers no substrate that meets the required strength, that is a
+  cannot-build, named, deploying nothing.
+
+The substrate is a resolved bind like any other (see docs/contracts.md, "The substrate
+handle"). It is also the handle petard harvests through, so the deploy sysop stands up
+is reachable by the lights-out layer even when it lives in a container or a cluster.
+
+## Author a rung just-in-time
+
+The rungs are a cache, not a menu (docs/ops-substrate.md). When a config needs an
+isolation substrate and no cached rung resolves for this target, sysop AUTHORS one.
+This is the loop, and you are the one who runs it -- there is no separate automation
+to build, because you doing this and a dispatched sysop agent doing this are the same
+thing. Do not try to pre-mint every contingency into a script; interrogate the target
+here, in the loop:
+
+1. **Interrogate the target.** Probe what isolation the host actually offers -- a
+   container daemon, a reachable cluster, user namespaces, a burnable VM, a cloud
+   account. Do the messy inference now; do not assume.
+2. **Author an adapter against the contract.** Implement the Substrate contract
+   (`{provision, exec, teardown, workroot, residue, strength, name}` in
+   `envelope/substrate.py`), matched to what you found. `DindSubstrate` and
+   `K3sSubstrate` are the reference builds -- follow their shape. Point, don't embed:
+   compose the target's own tooling (docker, kubectl, a cloud CLI), own only the glue.
+3. **Grade it against reality.** Run a real workload through the rung, verify it came
+   up, and verify teardown leaves no residue (the non-destructive invariant). A rung
+   that is not graded is not done. Add a test beside `tests/test_k3s.py`.
+4. **Label its honest strength.** Never claim a guarantee the rung does not provide.
+   k3s isolates the workload but runs its deploy driver on the host, so it is
+   `cluster`, not host-safe `environmental`. An honest weaker rung beats a dishonest
+   strong label; do not wire a rung into the environmental ladder unless it earns it.
+5. **Surface cost, then cache.** Local or standing infra is $0; a burnable cloud rung
+   has a price -- estimate it, gate it by policy, never spend silently. A graded rung
+   becomes a cached recipe (the resolution store) so the next operator pulls it instead
+   of re-authoring.
 
 ## Point, don't embed
 
