@@ -233,14 +233,16 @@ def _dind_factory(config, target_dir):
     return DindSubstrate(app=config.get("app", "app"), source_local=src_local)
 
 
+# A CACHE of already-authored rungs, not a menu of what is possible. A rung is
+# resolved just-in-time by AUTHORING an adapter against the Substrate contract when
+# an operator's problem needs it (k3s, EKS, AKS, a burnable droplet), then caching it
+# here and as a shareable recipe (the resolution store). dind is the reference build
+# the generator learns the shape from. The frontier of what resolves is not this list;
+# it is anything develop can author to satisfy {provision, exec, teardown} for the
+# target at hand. See docs/ops-substrate.md ("the ladder is a cache, not a menu").
 ENVIRONMENTAL_LADDER = [
     ("dind", "environmental",
      "docker version >/dev/null 2>&1", _dind_factory),
-    # next rungs (probes real, adapters unbuilt -- left out of the resolvable set
-    # on purpose, so the resolver never claims a capability it cannot drive):
-    #   ("podman-rootless", "environmental", "podman info ...", _podman_factory)
-    #   ("k3s-job",         "environmental", "kubectl get ns ...", _k3s_factory)
-    #   ("burnable-vm",     "environmental", "<cloud probe>",     _vm_factory)
 ]
 
 

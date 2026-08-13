@@ -33,6 +33,10 @@ aether; it got built, and hoist is what builds and operates it.
 5. **State does not re-derive.** App data and cluster state are one-way facts. Growing
    or moving must migrate state, and that is sysop's real backup and state
    responsibility. Everything else re-derives; data does not.
+6. **No silent spend.** Every resolution, deploy, and practice-run surfaces its
+   estimated and actual cost; spend is gated proportionally by operator policy, never
+   hidden. This is no-silent-success applied to money, and its teardown guarantee is
+   the residue check (invariant on the substrate) pointed at billable resources.
 
 ## The model
 
@@ -80,6 +84,78 @@ without knowing k3s. Infra recipes are the highest-value thing to share.
 - **State and cluster migration** is sysop's backup responsibility.
 - **MVP ladder:** local docker (built) -> single cloud VM docker host -> k3s/proxmox as
   the sophisticated end, not the MVP.
+
+## The rung is resolved just-in-time (the ladder is a cache, not a menu)
+
+A substrate rung is not a pre-built adapter picked from a fixed set. It is resolved
+just-in-time by AUTHORING it against the `{provision, exec, teardown, workroot,
+strength}` contract when the operator's problem needs it. The checked-in ladder (dind,
+today) is a warm cache of already-authored rungs, not the boundary of what is
+resolvable. The frontier is "anything develop can author to satisfy the contract,
+matched to this operator's reality" -- k3s, EKS, AKS, a DigitalOcean droplet: each
+authored on demand, not enumerated in advance. Building a rung "now" pre-builds a menu
+item and contradicts the point; the rung is built when an operator's problem scope
+requires it.
+
+This is build-rule 1 (ship spec + generator + acceptance test; checked-in code is a
+regenerable reference build), applied to substrates:
+
+- **spec** = the `{provision, exec, teardown, workroot, strength}` contract
+- **generator** = develop, authoring an adapter against it, matched to need
+- **acceptance test** = the honest-grade envelope: a JIT-authored adapter is GRADED on
+  the real target, so we learn honestly whether it works, not whether it looked right
+- **reference build** = dind (the shape the generator learns from)
+
+The surrounding machinery already makes JIT viable: the grade validates the authored
+adapter at runtime (JIT without a validator is guessing); the resolution store (5e8)
+caches the validated adapter as a shareable recipe, so the nudge library warms itself
+(JIT the first time a k3s operator appears, cache-hit after); petard operates whatever
+got authored. The deploy profile is a coupled axis authored alongside the rung: an app
+that deploys with docker compose needs a k8s profile to target a cluster rung, so
+develop authors both against the operator's need.
+
+Governance: safe to fully automate for a throwaway rung (dind, a droplet you own and
+can burn). For anything that spends, persists, or is hard to reverse, the loop is match
+need -> PROPOSE the adapter and its spend -> preflight scopes it with the human ->
+approve -> author, grade, cache. The model is JIT; the governance is preflight and
+policy, gated proportionally at cost.
+
+## Cost spine: no silent spend
+
+Cost is a first-class quantity we surface, not a wall. A throwaway EKS practice run that
+tears down is cents ($0.34, not a scary bill); treating cents with the ceremony of a
+persistent commitment is the wrong kind of boxing-in. So the gate is a PROPORTIONAL
+DIAL set by operator policy (auto under $X, ask above, never-persistent-without-
+approval), not a binary, and the standing obligation is transparency.
+
+Where it lives:
+
+- **preflight / policy** carries the operator's spend tolerance and the estimate in the
+  feasibility verdict ("practicing ~$0.34, running ~$40/mo -- proceed or ask?").
+- **the envelope's grade extends to honest-cost**: predicted vs ACTUAL, reconciled after
+  the run, calibrating the recipe. Cost is re-derived from real runs, never frozen.
+- **the nudge library carries cost profiles** and leans into efficient practices we have
+  used: local hardware first (free -- the floor of the ladder), scale-to-zero (Azure
+  Functions, elastic ACS) over always-on, managed (AKS/EKS) over hand-rolled, inference
+  APIs (Bedrock, Deepinfra) over renting GPUs. Cheapest-viable-rung is the resolver
+  default -- "simplest viable rung" with a price tag; the free floor means we climb to
+  paid rungs only when the need pays for it.
+
+The honesty transparency demands (the engineering, not the intent):
+
+1. **Estimate with a range and confidence.** An estimate of $0.34 that bills $50 is a
+   transparency failure, worse than none. First-run estimates for a JIT-authored adapter
+   are guesses; say so.
+2. **Reconcile predicted vs actual** after each run and calibrate the recipe. The grade
+   loop, applied to the bill.
+3. **Verified teardown is the residue check pointed at money.** "Fully tear it down" only
+   holds if teardown is reliable; a failed teardown turns a 34-cent experiment into a
+   monthly leak. For a cloud rung, RESIDUE = leftover BILLABLE resources. The same
+   mechanism that proves dind left no container proves EKS left no billable node.
+
+The JIT loop with its cost spine: match need -> author adapter -> estimate (range) ->
+surface and gate proportionally -> run -> grade AND reconcile the bill -> verified
+teardown (residue = no cost leak) -> cache the recipe with its calibrated cost profile.
 
 ## Relationship to what is built
 
