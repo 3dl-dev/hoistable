@@ -1,0 +1,29 @@
+{
+  "app": "agent-dyno",
+  "source": { "clone": "/home/baron/projects/agent-dyno", "dir": "agent-dyno" },
+  "binds": [
+    { "name": "git", "probe": "git --version", "required": true },
+    { "name": "python3", "probe": "python3 --version", "required": true }
+  ],
+  "default_profile": "default",
+  "profiles": {
+    "default": {
+      "preflight": [
+        { "name": "python>=3.8",
+          "probe": "python3 -c \"import sys; sys.exit(0 if sys.version_info >= (3,8) else 1)\"",
+          "required": true }
+      ],
+      "bringup": [
+        { "name": "no-build", "run": "true" }
+      ],
+      "health": [
+        { "name": "numerator-present", "check": "test -f core/survival_git.py" },
+        { "name": "report-driver-present", "check": "test -f skills/dyno-report/dyno_report.py" }
+      ],
+      "acceptance": [
+        { "name": "survival_git", "check": "python3 core/test_survival_git.py" },
+        { "name": "dyno_report", "check": "python3 skills/dyno-report/test_dyno_report.py" }
+      ]
+    }
+  }
+}

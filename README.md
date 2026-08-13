@@ -61,9 +61,11 @@ config includes only the operators that project needs.
   or providing its own. sysop **composes external skills** for everything
   infra-specific (AWS, Azure, DigitalOcean, local VM, SSL and certs, SSO, security
   monitoring) instead of internalizing that knowledge. Product-specific run-time
-  operations are sysop scope too: agent-dyno distributing a leaderboard, or
-  publishing each team member's findings, is sysop work inside that product, not a
-  separate operator.
+  operations are sysop scope too: agent-dyno distributing its anonymized,
+  technique-only leaderboard is sysop work inside that product, not a separate
+  operator. (Note: agent-dyno's constitution forbids ranking or comparing
+  individuals, so "publish each member's findings" is not a feature to lift from it;
+  a per-member distribution would be a deliberate departure, decided upstream.)
 - **petard** (lights-out fallback): the no-frontier operational fallback that sysop
   trains and keeps fresh. It is retrieval-grounded and runs independent of the
   frontier stack, on its own power and network path. Hoist with your own petard: the
