@@ -11,3 +11,6 @@ __pycache__/
 
 # release artifacts (published to GitHub releases, not committed)
 dist/
+
+# transient git worktrees created mid-session
+.claude/worktrees/

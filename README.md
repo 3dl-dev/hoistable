@@ -60,7 +60,7 @@ config includes only the operators that project needs.
   it day to day, and own the secrets, dovetailing with whatever the user already has
   or providing its own. sysop **composes external skills** for everything
   infra-specific (AWS, Azure, DigitalOcean, local VM, SSL and certs, SSO, security
-  monitoring) instead of internalizing that knowledge. Product-specific run-time
+  monitoring) instead of internalizing that knowledge.
   It deploys into an isolated namespace the runner owns (its own name, ports, and
   storage), never the app's own singular deployment, per the non-destructive
   onboarding invariant below. Product-specific run-time
