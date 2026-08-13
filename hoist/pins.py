@@ -16,12 +16,31 @@ import hashlib
 import io
 import os
 import shutil
+import subprocess
 import tarfile
+import tempfile
 import urllib.request
 
 
 def _cache_root():
     return os.environ.get("HOIST_CACHE") or os.path.expanduser("~/.cache/hoist/operators")
+
+
+def _fetch_github_release(url):
+    """Fetch a GitHub release asset via gh, which authenticates correctly for
+    private repos (a raw token on the browser download URL 404s). URL shape:
+    https://github.com/<owner>/<repo>/releases/download/<tag>/<asset>."""
+    parts = url.split("/")
+    i = parts.index("releases")
+    owner, repo, tag, asset = parts[i - 2], parts[i - 1], parts[i + 2], parts[i + 3]
+    dest = tempfile.mkdtemp()
+    subprocess.run(
+        ["gh", "release", "download", tag, "--repo", f"{owner}/{repo}",
+         "--pattern", asset, "--dir", dest],
+        check=True, capture_output=True, text=True,
+    )
+    with open(os.path.join(dest, asset), "rb") as f:
+        return f.read()
 
 
 def _fetch(url):
@@ -30,6 +49,8 @@ def _fetch(url):
     if "://" not in url:
         with open(url, "rb") as f:
             return f.read()
+    if "github.com" in url and "/releases/download/" in url:
+        return _fetch_github_release(url)
     with urllib.request.urlopen(url, timeout=60) as r:  # noqa: S310 - operator-supplied
         return r.read()
 
