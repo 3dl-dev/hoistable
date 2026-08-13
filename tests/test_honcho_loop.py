@@ -27,10 +27,9 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "envelope"))
 sys.path.insert(0, os.path.join(HERE, "..", "operators", "petard"))
-import envelope  # noqa: E402
-import cards  # noqa: E402
-import build_corpus  # noqa: E402
+sys.path.insert(0, os.path.join(HERE, "..", "operators", "sysop"))
 import translate  # noqa: E402
+import operate  # noqa: E402  (sysop's operate driver -- the loop as a runnable thing)
 
 CONFIG = os.path.join(HERE, "..", "examples", "honcho", "config.json")
 SPEC = os.path.join(HERE, "..", "examples", "honcho", "petard-cards-spec.json")
@@ -57,15 +56,19 @@ class HonchoLoop(unittest.TestCase):
     def test_build_run_lom_closed_end_to_end(self):
         config = _load(CONFIG)
 
+        # Driven through sysop's operate driver -- the loop as a runnable thing --
+        # not the raw envelope/petard calls, so this exercises the product path.
         if not HAS_DOCKER:
             # honcho requires an environmental substrate; with no docker none
             # resolves, so operate reports cannot-build and keeps nothing up.
-            report, sub = envelope.operate(config)
+            report, sub, cards = operate.operate_and_harvest(config, _load(SPEC))
             self.assertEqual(report["outcome"], "cannot-build")
             self.assertIn("no isolation substrate", report["reason"])
+            self.assertEqual(cards, [])
             return
 
-        report, sub = envelope.operate(config, timeout=1200)
+        report, sub, honcho_cards = operate.operate_and_harvest(
+            config, _load(SPEC), timeout=1200)
         try:
             # (a) built and KEPT RUNNING inside dind
             self.assertEqual(report["outcome"], "built",
@@ -79,19 +82,15 @@ class HonchoLoop(unittest.TestCase):
             rc, out = sub.exec("curl -fsS http://localhost:8000/health", workdir, {}, 30)
             self.assertEqual(rc, 0, f"honcho api not live inside the substrate: {out}")
 
-            # (b) harvest honcho's command surface THROUGH the substrate handle
-            spec = _load(SPEC)
-            run = build_corpus.substrate_runner(sub, workdir)
-            honcho_cards = cards.build_cards(spec, root=workdir, run=run)
+            # (b) the driver harvested honcho's command surface THROUGH the handle
             self.assertTrue(honcho_cards, "no cards harvested from inside the deploy")
-            # real honcho operational commands, harvested live from the running stack
             cmds = " ".join(c["command"].lower() for c in honcho_cards)
             self.assertIn("restart", cmds)
             self.assertIn("logs", cmds)
             for c in honcho_cards:                          # all from the live compose
                 self.assertIn("compose", c["command"].lower())
 
-            # (c) translate operator intent -> a REAL grounded honcho command
+            # (c) the driver answers operator intent -> a REAL grounded command
             vocab = {"restart", "bounce", "logs", "show", "services", "tail",
                      "container", "containers"}
             for c in honcho_cards:
@@ -100,18 +99,17 @@ class HonchoLoop(unittest.TestCase):
             embed = translate.bag_of_words_embedder(vocab)
             real_cmds = {c["command"] for c in honcho_cards}
 
-            hits = translate.rank(embed, honcho_cards, "restart the services", top=3)
-            self.assertTrue(hits)
-            self.assertIn("restart", hits[0]["command"].lower())
-            self.assertIn(hits[0]["command"], real_cmds)    # verbatim, never invented
+            hit = operate.answer(honcho_cards, "restart the services", embed)
+            self.assertIsNotNone(hit)
+            self.assertIn("restart", hit["command"].lower())
+            self.assertIn(hit["command"], real_cmds)        # verbatim, never invented
 
-            hits = translate.rank(embed, honcho_cards, "show me the logs", top=3)
-            self.assertIn("logs", hits[0]["command"].lower())
-            self.assertIn(hits[0]["command"], real_cmds)
+            hit = operate.answer(honcho_cards, "show me the logs", embed)
+            self.assertIn("logs", hit["command"].lower())
+            self.assertIn(hit["command"], real_cmds)
 
-            # refuses to invent: nonsense stays below the confidence floor
-            nonsense = translate.rank(embed, honcho_cards, "xyzzy plugh frobnicate", top=1)
-            self.assertLess(nonsense[0]["score"], 0.2)
+            # refuses to invent: nonsense is declined, not guessed
+            self.assertIsNone(operate.answer(honcho_cards, "xyzzy plugh frobnicate", embed))
         finally:
             # (e) explicit teardown; (d) host left clean, no residue of ours
             ok, _ = sub.teardown()
