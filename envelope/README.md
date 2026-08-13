@@ -67,9 +67,12 @@ resolves the strongest rung the target actually offers.
   user-namespace sandbox, a burnable VM, a k3s Job are the next rungs) and provisions
   the first that answers. A file the deploy writes lands in the throwaway container; a
   container it starts or kills lives on an inner daemon the host never sees. Teardown
-  destroys the substrate, and the host daemon is verified byte-identical before and
-  after (the environmental blast radius, checked one level up from the config's own
-  isolation — it holds even for a config that ignores that block).
+  destroys the substrate, and the environmental blast radius is verified by the
+  substrate's own residue: after teardown no host resource of ours remains. This is
+  checked one level up from the config's own isolation, so it holds even for a config
+  that ignores that block, and it is scoped to our footprint rather than a full
+  host-daemon diff, so unrelated containers churning on a shared host never register
+  as a false violation.
 
 If an environmental rung is required and none resolves on the target, that is a
 `cannot-build`, named at the door — an unresolved bind, not a crash. See

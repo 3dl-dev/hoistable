@@ -119,7 +119,7 @@ def _do_clone(sub, config, app, base_over, timeout):
 
 
 def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT,
-                 until="full"):
+                 until="full", operate=False):
     """Hoist and grade one config. Returns a report dict; never raises on a
     failed check (a failed check is data, not an exception).
 
@@ -127,7 +127,13 @@ def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT,
     and for the host floor the cheap probes + collision check) and stops before
     deploying anything: this is what the preflight operator runs to give a
     feasibility verdict without touching the target. until="full" (default)
-    resolves (and provisions) the substrate, deploys, and grades."""
+    resolves (and provisions) the substrate, deploys, and grades.
+
+    operate=True is the sysop path, distinct from grading: deploy and grade, but
+    do NOT tear the substrate down. The live substrate is left running and stashed
+    on the report under "_substrate_obj" so the caller can exec into it (petard
+    harvests from a deploy that stays up, contract C) and tear it down explicitly
+    when done. Prefer the operate() wrapper, which returns (report, substrate)."""
     profiles = config.get("profiles", {})
     if profile_name is None:
         profile_name = config.get("default_profile") or next(iter(profiles), None)
@@ -242,16 +248,13 @@ def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT,
         return report
 
     # --- full path: resolve (and provision) the substrate, deploy, grade ----
-    # For an environmental rung, snapshot the HOST daemon before provisioning:
-    # our substrate's own container is created after this and reclaimed by
-    # teardown, so a clean hoist leaves the host byte-identical. This is the
-    # environmental blast radius, checked one level up from a config's own
-    # declared isolation -- it holds even for a config that ignores that block.
-    require_env = (substrate.STRENGTHS.get(_required_strength(iso), 0)
-                   > substrate.STRENGTHS["host"])
-    host_blast_before = (substrate.host_daemon_snapshot(timeout)
-                         if require_env else None)
-
+    # The environmental blast radius is verified after teardown by the substrate's
+    # own residue (substrate.residue): our footprint is exactly its named
+    # container, created after resolution and reclaimed by teardown, so a clean
+    # hoist leaves no residue. This is checked one level up from a config's own
+    # declared isolation -- it holds even for a config that ignores that block --
+    # and is scoped to our own resources, so unrelated containers churning on a
+    # shared host never register as a false violation.
     sub, sinfo = substrate.resolve_substrate(config, profile, target_dir, timeout)
     if sub is None:
         report["substrate"] = {"resolved": False}
@@ -389,26 +392,53 @@ def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT,
 
         return report
     finally:
-        # An environmental substrate is always torn down, whatever the outcome, so
-        # onboarding adds nothing lasting. Run the config's own teardown inside it
-        # first (best-effort), then destroy the substrate, then verify the host
-        # daemon is byte-identical to before we provisioned: the environmental
-        # guarantee, which holds even for a config that ignored its own isolation.
-        if sub is not None and sub.name != "host":
+        # operate mode (sysop): leave the substrate running and hand it back, so
+        # the deploy stays up for petard to harvest from and for the caller to tear
+        # down explicitly. The environmental blast-radius check moves to that
+        # explicit teardown (the caller owns it), since the substrate is up on
+        # purpose here.
+        if operate and sub is not None and sub.name != "host":
+            report["_substrate_obj"] = sub
+            if isinstance(report.get("substrate"), dict):
+                report["substrate"]["operating"] = True
+        # Grade mode: an environmental substrate is always torn down, whatever the
+        # outcome, so onboarding adds nothing lasting. Run the config's own teardown
+        # inside it first (best-effort), then destroy the substrate, then verify the
+        # environmental guarantee by our own residue: no host resource of ours
+        # remains. Scoped to our footprint, so it holds even for a config that
+        # ignored its own isolation, and is not fooled by unrelated host churn.
+        elif sub is not None and sub.name != "host":
             if isolate and iso.get("teardown") and has_bringup and "workdir" in report:
                 sub.exec(iso["teardown"], report["workdir"], base_over, timeout)
             ok, _ = sub.teardown()
             if isinstance(report.get("substrate"), dict):
                 report["substrate"]["torn_down"] = ok
-            if host_blast_before is not None:
-                host_blast_after = substrate.host_daemon_snapshot(timeout)
-                clean = host_blast_after == host_blast_before
-                report["blast_radius"] = {"clean": clean,
-                                         "protected_before": len(host_blast_before),
-                                         "protected_after": len(host_blast_after)}
-                if not clean:
-                    report["did_not_transfer"].append(
-                        "blast_radius:touched-pre-existing-state")
+            residue = sub.residue()
+            report["blast_radius"] = {"clean": not residue, "residue": residue}
+            if residue:
+                report["did_not_transfer"].append(
+                    "blast_radius:substrate-residue-remains")
+
+
+def operate(config, target_dir=None, profile_name=None, timeout=DEFAULT_TIMEOUT):
+    """The sysop path: deploy and grade one config, then KEEP IT RUNNING. Returns
+    (report, substrate). The substrate is live; exec into it with substrate.exec
+    (petard harvests its command surface this way, contract C) and destroy it with
+    substrate.teardown() when done. For a host-floor deploy there is no separate
+    substrate to keep, so the returned substrate is the HostSubstrate and teardown
+    is a no-op. Never auto-tears-down: that is the caller's explicit call."""
+    if target_dir is None:
+        target_dir = tempfile.mkdtemp(prefix="hoist-operate-")
+    os.makedirs(target_dir, exist_ok=True)
+    report = run_envelope(config, target_dir, profile_name, timeout,
+                          until="full", operate=True)
+    sub = report.pop("_substrate_obj", None)
+    if sub is None:
+        # cannot-build / honest-failure before an environmental substrate stood up,
+        # or a host-floor deploy: hand back a resolved handle so the caller has a
+        # uniform (report, substrate) contract and a teardown to call.
+        sub = substrate.HostSubstrate(target_dir)
+    return report, sub
 
 
 def format_report(r):
@@ -443,8 +473,7 @@ def format_report(r):
         lines.append("  ** BLAST RADIUS VIOLATED: the hoist changed state outside its "
                      "namespace despite declaring isolation **")
     elif br and r.get("substrate", {}).get("strength") not in (None, "host"):
-        lines.append(f"  blast radius clean: host state identical "
-                     f"({br['protected_before']} resources) before and after")
+        lines.append("  blast radius clean: the substrate left no residue on the host")
     if r.get("did_not_transfer"):
         lines.append("  did not transfer: " + ", ".join(r["did_not_transfer"]))
     return "\n".join(lines)

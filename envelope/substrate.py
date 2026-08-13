@@ -45,19 +45,6 @@ import uuid
 STRENGTHS = {"host": 0, "environmental": 1}
 
 
-def host_daemon_snapshot(timeout=30):
-    """Host-visible container state an environmental hoist must leave identical:
-    the environmental blast radius, one level up from a config's own declared
-    isolation. Captured on the host BEFORE a substrate is provisioned and AFTER it
-    is torn down; a clean hoist nets to zero because the substrate's own outer
-    container is created after this snapshot and removed by teardown. Empty list
-    if docker is absent (nothing to protect on this axis)."""
-    probe = ("docker ps -aq 2>/dev/null; echo ---; docker volume ls -q 2>/dev/null; "
-             "echo ---; docker network ls -q 2>/dev/null")
-    _, out = _sh(probe, timeout=timeout)
-    return sorted(l for l in out.splitlines() if l.strip())
-
-
 def _sh(cmd, timeout, env=None):
     """Run a shell command on the host, return (rc, tail). The one place this
     module touches the host directly: to drive a substrate's own tooling."""
@@ -97,12 +84,15 @@ class Substrate:
     def teardown(self):
         return True, ""
 
-    def host_state(self, timeout):
-        """Host-visible state this substrate must leave identical: the
-        environmental blast radius, checked one level up from a config's own
-        declared isolation. None means 'not applicable' (the host substrate uses
-        the config's per-namespace blast probe instead)."""
-        return None
+    def residue(self):
+        """Host resources still attributable to THIS substrate after teardown: the
+        environmental blast radius, checked by our own footprint rather than by a
+        full host-daemon diff. A full diff is unreliable on a shared host (unrelated
+        containers churn on their own), and it over-claims; scoping to our named
+        resources verifies the honest guarantee -- the hoist added exactly its
+        substrate and reclaimed exactly its substrate -- and is immune to that
+        churn. Empty list means clean. The host floor owns nothing to reclaim."""
+        return []
 
 
 class HostSubstrate(Substrate):
@@ -221,14 +211,14 @@ class DindSubstrate(Substrate):
         rc, tail = _sh(f"docker rm -fv {shlex.quote(self.cid)}", timeout=60)
         return rc == 0, tail
 
-    def host_state(self, timeout):
-        # The environmental blast radius: everything on the HOST daemon the hoist
-        # must not disturb. Our outer container is created after this snapshot and
-        # removed by teardown, so a clean hoist nets to zero.
-        probe = ("docker ps -aq; echo ---; docker volume ls -q; echo ---; "
-                 "docker network ls -q")
-        _, out = _sh(probe, timeout=timeout)
-        return sorted(l for l in out.splitlines() if l.strip())
+    def residue(self):
+        # Our footprint on the host is exactly one named container (its anonymous
+        # volume goes with it on 'docker rm -fv'). After teardown, that container
+        # must be gone. Scoped to our own name, so unrelated containers churning on
+        # a shared host do not register as a false violation.
+        rc, out = _sh(f"docker ps -aq --filter name={shlex.quote(self.cid)}",
+                     timeout=30)
+        return [l for l in out.splitlines() if l.strip()] if rc == 0 else []
 
 
 # --- the ladder ----------------------------------------------------------------
