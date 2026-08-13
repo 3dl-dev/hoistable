@@ -9,6 +9,11 @@ The shape is skillc's envelope applied to a deployable system instead of a voice
 
   - binds        the local capabilities the config requires (docker, a secret).
                  A missing required bind is a CANNOT-BUILD: named, and we stop.
+  - substrate    WHERE the config's steps run, resolved not depended on. The host
+                 is the floor rung; a config that needs a deploy to be unable to
+                 touch host state asks for an environmental rung (dind here), and
+                 the runner resolves the strongest the target offers or reports
+                 cannot-build. See substrate.py.
   - preflight    cheap probes run before deploy, so the user learns at the door.
                  A required preflight blocker is also a CANNOT-BUILD.
   - bringup      clone + configure + deploy the chosen profile. The install gate.
@@ -19,10 +24,12 @@ The shape is skillc's envelope applied to a deployable system instead of a voice
 Three plain outcomes, exactly as skillc reports:
   - built           install gate up and every acceptance check passed.
   - honest-failure  it came up but something did not transfer; we say what.
-  - cannot-build    a required bind or a preflight blocker is missing, named.
+  - cannot-build    a required bind, preflight blocker, or isolation substrate is
+                    missing, named.
 
 Standard library only (build-rule 3). The config is data; this runner is generic.
 App specifics live in the config, never here (build-rule 6, point don't embed).
+The "where it runs" is a resolved bind (substrate.py), not a hardcoded backend.
 """
 
 import argparse
@@ -35,12 +42,19 @@ import sys
 import tempfile
 import uuid
 
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+import substrate  # noqa: E402
+
 
 DEFAULT_TIMEOUT = 600
 
 
 def _run(cmd, cwd, timeout=DEFAULT_TIMEOUT, env=None):
-    """Run a shell command, return (rc, tail-of-output)."""
+    """Run a shell command on the host, return (rc, tail-of-output). Used for the
+    host-side binds gate; every step that runs *in the substrate* goes through the
+    resolved substrate's exec instead."""
     try:
         p = subprocess.run(
             cmd, shell=True, cwd=cwd, timeout=timeout,
@@ -58,14 +72,6 @@ def _step_list(profile, key):
     return profile.get(key, []) or []
 
 
-def _snapshot(probe, cwd, env, timeout):
-    """A sorted snapshot of the blast radius: the resources a hoist must not
-    touch. Compared before deploy and after teardown; any difference means the
-    hoist changed something outside its own namespace, declaration or not."""
-    _, out = _run(probe, cwd=cwd, timeout=timeout, env=env)
-    return sorted(line for line in out.splitlines() if line.strip())
-
-
 def _free_port():
     """Ask the OS for an unused host port so an isolated hoist never fights an
     existing instance for a fixed port."""
@@ -76,15 +82,52 @@ def _free_port():
     return port
 
 
+def _lines(out):
+    return sorted(line for line in out.splitlines() if line.strip())
+
+
+def _required_strength(iso):
+    require = (iso or {}).get("require", "host")
+    if require in ("namespace", None):
+        return "host"
+    return require
+
+
+def _do_clone(sub, config, app, base_over, timeout):
+    """Clone the app onto the substrate the way the config says. Returns
+    (workdir, err) where err is None or a (reason, detail) pair. The clone runs
+    *in the substrate*: for the host that is the host filesystem; for a fresh
+    container the source is staged in and cloned there, so nothing lands on the
+    host."""
+    workroot = sub.workroot()
+    src = config.get("source") or {}
+    if src.get("clone"):
+        sub_dir = src.get("dir", app)
+        dest = os.path.join(workroot, sub_dir)
+        rc, _ = sub.exec(f"test -d {shlex.quote(dest)}", workroot, base_over, 30)
+        if rc != 0:
+            clone_from = sub.stage(src["clone"])
+            rc, tail = sub.exec(
+                f"git clone {shlex.quote(clone_from)} {shlex.quote(dest)}",
+                workroot, base_over, timeout)
+            if rc != 0:
+                return None, ("clone failed", tail)
+        return dest, None
+    if src.get("dir"):
+        return os.path.join(workroot, src["dir"]), None
+    return workroot, None
+
+
 def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT,
                  until="full"):
     """Hoist and grade one config. Returns a report dict; never raises on a
     failed check (a failed check is data, not an exception).
 
-    until="preflight" runs only the know-early pass (binds, preflight probes,
-    isolation checks) and stops before deploying anything: this is what the
-    preflight operator runs to give a feasibility verdict without touching the
-    target. until="full" (default) deploys and grades."""
+    until="preflight" runs only the know-early pass (binds, isolation feasibility,
+    and for the host floor the cheap probes + collision check) and stops before
+    deploying anything: this is what the preflight operator runs to give a
+    feasibility verdict without touching the target. until="full" (default)
+    resolves (and provisions) the substrate, deploys, and grades."""
     profiles = config.get("profiles", {})
     if profile_name is None:
         profile_name = config.get("default_profile") or next(iter(profiles), None)
@@ -97,26 +140,26 @@ def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT,
         }
     profile = profiles[profile_name]
     app = config.get("app", "?")
-    # Env overrides let a config isolate its deployment namespace (a unique
-    # COMPOSE_PROJECT_NAME, remapped host ports) so a same-host hoist cannot
-    # collide with an already-running instance. Applied to every step.
-    run_env = dict(os.environ)
+
+    # The env the config/profile contribute. The substrate decides how to combine
+    # it with its own base environment (the host merges os.environ; a fresh
+    # container uses a clean env), so host state never leaks into a sandboxed run.
+    base_over = {}
     for src in (config.get("env", {}), profile.get("env", {})):
-        run_env.update({k: str(v) for k, v in src.items()})
+        base_over.update({k: str(v) for k, v in src.items()})
+
     report = {
-        "app": app,
-        "profile": profile_name,
-        "binds": [],
-        "preflight": [],
-        "bringup": [],
-        "health": [],
-        "acceptance": [],
-        "did_not_transfer": [],
+        "app": app, "profile": profile_name,
+        "binds": [], "preflight": [], "bringup": [], "health": [],
+        "acceptance": [], "did_not_transfer": [], "substrate": None,
     }
 
-    # --- binds: missing required capability -> cannot-build, named, stop -----
+    # --- binds: host-side capability gate ----------------------------------
+    # Binds answer "can this host even do the hoist": is docker here to run a
+    # substrate, is git here to clone. They probe the host, before any substrate.
+    host_env = {**os.environ, **base_over}
     for b in config.get("binds", []):
-        rc, tail = _run(b["probe"], cwd=target_dir, timeout=timeout, env=run_env)
+        rc, tail = _run(b["probe"], cwd=target_dir, timeout=timeout, env=host_env)
         ok = rc == 0
         report["binds"].append({"name": b["name"], "ok": ok})
         if not ok and b.get("required", True):
@@ -125,167 +168,247 @@ def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT,
             report["detail"] = tail
             return report
 
-    # --- source: clone the app onto the target ------------------------------
-    src = config.get("source") or {}
-    workdir = target_dir
-    if src.get("clone"):
-        sub = src.get("dir", app)
-        dest = os.path.join(target_dir, sub)
-        if not os.path.isdir(dest):
-            rc, tail = _run(f"git clone {shlex.quote(src['clone'])} {shlex.quote(dest)}",
-                            cwd=target_dir, timeout=timeout, env=run_env)
-            if rc != 0:
-                report["outcome"] = "cannot-build"
-                report["reason"] = "clone failed"
-                report["detail"] = tail
-                return report
-        workdir = dest
-    elif src.get("dir"):
-        workdir = os.path.join(target_dir, src["dir"])
-    report["workdir"] = workdir
-
-    # --- preflight: cheap probes before deploy, know early ------------------
-    for p in _step_list(profile, "preflight"):
-        rc, tail = _run(p["probe"], cwd=workdir, timeout=timeout, env=run_env)
-        ok = rc == 0
-        report["preflight"].append({"name": p["name"], "ok": ok})
-        if not ok and p.get("required", True):
-            report["outcome"] = "cannot-build"
-            report["reason"] = f"preflight blocker: {p['name']}"
-            report["detail"] = tail
-            return report
-
-    # --- isolation: onboarding must never touch pre-existing target state ---
-    # The non-destructive onboarding invariant, enforced structurally. A profile
-    # that deploys MUST declare isolation. The runner then owns a fresh namespace
-    # (a unique name, its own host ports) and refuses to proceed unless that
-    # namespace is verified empty. A deploying profile that declares no isolation
-    # is REJECTED, never run: this is the guard that stops a hoist from
-    # re-asserting an app's own singular deployment on a host that already runs
-    # it. A genuinely hermetic profile must say so on purpose, with a reason.
+    # --- the non-destructive onboarding invariant --------------------------
+    # A profile that deploys MUST declare isolation: either a same-host namespace
+    # mapping, an isolation.require strength that resolves to an environmental
+    # substrate, or isolation.none for a genuinely hermetic profile. A deploying
+    # profile that declares nothing is REJECTED, never run.
     iso = profile.get("isolation")
     has_bringup = bool(_step_list(profile, "bringup"))
     if has_bringup and iso is None:
         report["outcome"] = "cannot-build"
         report["reason"] = (
             "refusing to deploy: profile has bringup but declares no isolation. "
-            "Declare a namespace mapping, or isolation:{\"none\":true,\"why\":...} "
-            "if it starts no daemons, binds no host ports, and writes no shared state."
+            "Declare a namespace mapping, an isolation.require strength, or "
+            "isolation:{\"none\":true,\"why\":...} if it starts no daemons, binds "
+            "no host ports, and writes no shared state."
         )
         return report
-    isolate = bool(iso) and not iso.get("none")
-    if iso and iso.get("none"):
+    iso = iso or {}
+    isolate = bool(profile.get("isolation")) and not iso.get("none")
+    if iso.get("none"):
         report["isolation"] = {"none": True, "why": iso.get("why", "")}
-    if isolate:
-        namespace = f"hoist-{app}-{uuid.uuid4().hex[:8]}"
-        report["isolation"] = {"namespace": namespace, "ports": {}}
-        if iso.get("namespace_env"):
-            run_env[iso["namespace_env"]] = namespace
-        for pe in iso.get("port_envs", []):
-            port = _free_port()
-            run_env[pe] = str(port)
-            report["isolation"]["ports"][pe] = port
-        probe = iso.get("collision_probe")
-        if probe:
-            rc, tail = _run(probe, cwd=workdir, timeout=timeout, env=run_env)
-            if rc != 0:
+
+    # --- preflight (know-early) path: report feasibility, deploy nothing ----
+    if until == "preflight":
+        feasible, sinfo = substrate.probe_substrate(config, profile, timeout)
+        report["substrate"] = sinfo if feasible else {"resolved": False}
+        if not feasible:
+            report["outcome"] = "cannot-build"
+            report["reason"] = sinfo
+            return report
+        # The host floor can be probed cheaply without provisioning anything. An
+        # environmental rung cannot be probed inside without standing it up, and
+        # preflight must touch nothing, so its feasibility is that the rung's
+        # prerequisite resolved; the full checks run at deploy.
+        if sinfo.get("strength") == "host":
+            hostsub = substrate.HostSubstrate(target_dir)
+            workdir, err = _do_clone(hostsub, config, app, base_over, timeout)
+            if err:
                 report["outcome"] = "cannot-build"
-                report["reason"] = f"isolation collision: namespace {namespace} is not clean"
+                report["reason"], report["detail"] = err
+                return report
+            for p in _step_list(profile, "preflight"):
+                rc, tail = hostsub.exec(p["probe"], workdir, base_over, timeout)
+                ok = rc == 0
+                report["preflight"].append({"name": p["name"], "ok": ok})
+                if not ok and p.get("required", True):
+                    report["outcome"] = "cannot-build"
+                    report["reason"] = f"preflight blocker: {p['name']}"
+                    report["detail"] = tail
+                    return report
+            if isolate:
+                namespace = f"hoist-{app}-{uuid.uuid4().hex[:8]}"
+                report["isolation"] = {"namespace": namespace, "ports": {}}
+                over = dict(base_over)
+                if iso.get("namespace_env"):
+                    over[iso["namespace_env"]] = namespace
+                for pe in iso.get("port_envs", []):
+                    port = _free_port()
+                    over[pe] = str(port)
+                    report["isolation"]["ports"][pe] = port
+                cprobe = iso.get("collision_probe")
+                if cprobe:
+                    rc, tail = hostsub.exec(cprobe, workdir, over, timeout)
+                    if rc != 0:
+                        report["outcome"] = "cannot-build"
+                        report["reason"] = (f"isolation collision: namespace "
+                                            f"{namespace} is not clean")
+                        report["detail"] = tail
+                        return report
+        report["outcome"] = "feasible"
+        report["reason"] = ("binds, isolation, and cheap checks pass; deploy would "
+                            "proceed")
+        return report
+
+    # --- full path: resolve (and provision) the substrate, deploy, grade ----
+    # For an environmental rung, snapshot the HOST daemon before provisioning:
+    # our substrate's own container is created after this and reclaimed by
+    # teardown, so a clean hoist leaves the host byte-identical. This is the
+    # environmental blast radius, checked one level up from a config's own
+    # declared isolation -- it holds even for a config that ignores that block.
+    require_env = (substrate.STRENGTHS.get(_required_strength(iso), 0)
+                   > substrate.STRENGTHS["host"])
+    host_blast_before = (substrate.host_daemon_snapshot(timeout)
+                         if require_env else None)
+
+    sub, sinfo = substrate.resolve_substrate(config, profile, target_dir, timeout)
+    if sub is None:
+        report["substrate"] = {"resolved": False}
+        report["outcome"] = "cannot-build"
+        report["reason"] = sinfo
+        return report
+    report["substrate"] = sinfo
+
+    try:
+        # --- source: clone the app onto the substrate ----------------------
+        workdir, err = _do_clone(sub, config, app, base_over, timeout)
+        if err:
+            report["outcome"] = "cannot-build"
+            report["reason"], report["detail"] = err
+            return report
+        report["workdir"] = workdir
+
+        # --- preflight probes, in the substrate ----------------------------
+        for p in _step_list(profile, "preflight"):
+            rc, tail = sub.exec(p["probe"], workdir, base_over, timeout)
+            ok = rc == 0
+            report["preflight"].append({"name": p["name"], "ok": ok})
+            if not ok and p.get("required", True):
+                report["outcome"] = "cannot-build"
+                report["reason"] = f"preflight blocker: {p['name']}"
                 report["detail"] = tail
                 return report
 
-    # If we are only running preflight (the operator's know-early pass), stop
-    # here: everything up to deploy has passed, and we have touched nothing.
-    if until == "preflight":
-        report["outcome"] = "feasible"
-        report["reason"] = "binds, preflight, and isolation checks pass; deploy would proceed"
+        # --- isolation: host floor uses the config's namespace; an
+        #     environmental rung IS the isolation boundary --------------------
+        deploy_over = dict(base_over)
+        blast_probe = None
+        if sub.strength == "host" and isolate:
+            namespace = f"hoist-{app}-{uuid.uuid4().hex[:8]}"
+            report["isolation"] = {"namespace": namespace, "ports": {}}
+            if iso.get("namespace_env"):
+                deploy_over[iso["namespace_env"]] = namespace
+            for pe in iso.get("port_envs", []):
+                port = _free_port()
+                deploy_over[pe] = str(port)
+                report["isolation"]["ports"][pe] = port
+            cprobe = iso.get("collision_probe")
+            if cprobe:
+                rc, tail = sub.exec(cprobe, workdir, deploy_over, timeout)
+                if rc != 0:
+                    report["outcome"] = "cannot-build"
+                    report["reason"] = (f"isolation collision: namespace "
+                                        f"{namespace} is not clean")
+                    report["detail"] = tail
+                    return report
+            blast_probe = iso.get("blast_radius_probe")
+        elif sub.strength != "host":
+            report["isolation"] = {"substrate": sinfo.get("name"),
+                                  "strength": sinfo.get("strength"),
+                                  "why": "the substrate is the isolation boundary"}
+
+        # --- blast radius before (host floor: the config's per-namespace
+        #     probe; environmental: the host-daemon snapshot taken above) -----
+        blast_before = None
+        if blast_probe:
+            _, out = sub.exec(blast_probe, workdir, deploy_over, timeout)
+            blast_before = _lines(out)
+
+        # --- bringup: the install gate -------------------------------------
+        bringup_ok = True
+        for s in _step_list(profile, "bringup"):
+            rc, tail = sub.exec(s["run"], workdir, deploy_over, timeout)
+            ok = rc == 0
+            report["bringup"].append(
+                {"name": s["name"], "ok": ok, **({} if ok else {"detail": tail})})
+            if not ok:
+                bringup_ok = False
+                report["did_not_transfer"].append(f"bringup:{s['name']}")
+
+        # --- health: is it actually up -------------------------------------
+        health_up = health_total = 0
+        if bringup_ok:
+            for h in _step_list(profile, "health"):
+                health_total += 1
+                rc, tail = sub.exec(h["check"], workdir, deploy_over, timeout)
+                ok = rc == 0
+                report["health"].append(
+                    {"name": h["name"], "ok": ok, **({} if ok else {"detail": tail})})
+                if ok:
+                    health_up += 1
+                else:
+                    report["did_not_transfer"].append(f"health:{h['name']}")
+        report["health_score"] = [health_up, health_total]
+
+        # --- acceptance: the held-back honest transfer score ---------------
+        acc_pass = acc_total = 0
+        install_up = bringup_ok and health_up == health_total
+        if install_up:
+            for c in _step_list(profile, "acceptance"):
+                acc_total += 1
+                rc, tail = sub.exec(c["check"], workdir, deploy_over, timeout)
+                ok = rc == 0
+                report["acceptance"].append(
+                    {"name": c["name"], "ok": ok, **({} if ok else {"detail": tail})})
+                if ok:
+                    acc_pass += 1
+                else:
+                    report["did_not_transfer"].append(f"acceptance:{c['name']}")
+        report["transfer_score"] = round(acc_pass / acc_total, 4) if acc_total else 0.0
+        report["transfer"] = [acc_pass, acc_total]
+
+        # --- outcome -------------------------------------------------------
+        if not install_up:
+            report["outcome"] = "honest-failure"
+            report["reason"] = "did not come up cleanly on this target"
+        elif acc_total and acc_pass == acc_total:
+            report["outcome"] = "built"
+            report["reason"] = "install gate up, all acceptance checks passed"
+        else:
+            report["outcome"] = "honest-failure"
+            report["reason"] = "came up, but not everything transferred"
+
+        # --- teardown (host floor: the config's namespace teardown) --------
+        if sub.strength == "host" and isolate and iso.get("teardown") and has_bringup:
+            rc, tail = sub.exec(iso["teardown"], workdir, deploy_over, timeout)
+            report["teardown"] = {"ran": True, "ok": rc == 0,
+                                 **({} if rc == 0 else {"detail": tail})}
+
+        # --- blast radius after (host floor per-namespace probe) -----------
+        if blast_before is not None:
+            _, out = sub.exec(blast_probe, workdir, deploy_over, timeout)
+            blast_after = _lines(out)
+            clean = blast_after == blast_before
+            report["blast_radius"] = {"clean": clean,
+                                     "protected_before": len(blast_before),
+                                     "protected_after": len(blast_after)}
+            if not clean:
+                report["did_not_transfer"].append(
+                    "blast_radius:touched-pre-existing-state")
+
         return report
-
-    # Snapshot the blast radius before we touch anything: what must be identical
-    # after teardown. This catches a config that declared isolation but whose
-    # commands stomped pre-existing state anyway (the declaration-vs-behavior gap).
-    blast_probe = iso.get("blast_radius_probe") if isolate else None
-    blast_before = _snapshot(blast_probe, workdir, run_env, timeout) if blast_probe else None
-
-    # --- bringup: the install gate -----------------------------------------
-    bringup_ok = True
-    for s in _step_list(profile, "bringup"):
-        rc, tail = _run(s["run"], cwd=workdir, timeout=timeout, env=run_env)
-        ok = rc == 0
-        report["bringup"].append(
-            {"name": s["name"], "ok": ok, **({} if ok else {"detail": tail})}
-        )
-        if not ok:
-            bringup_ok = False
-            report["did_not_transfer"].append(f"bringup:{s['name']}")
-
-    # --- health: is it actually up -----------------------------------------
-    health_up = 0
-    health_total = 0
-    if bringup_ok:
-        for h in _step_list(profile, "health"):
-            health_total += 1
-            rc, tail = _run(h["check"], cwd=workdir, timeout=timeout, env=run_env)
-            ok = rc == 0
-            report["health"].append(
-                {"name": h["name"], "ok": ok, **({} if ok else {"detail": tail})}
-            )
-            if ok:
-                health_up += 1
-            else:
-                report["did_not_transfer"].append(f"health:{h['name']}")
-    report["health_score"] = [health_up, health_total]
-
-    # --- acceptance: the held-back honest transfer score -------------------
-    acc_pass = 0
-    acc_total = 0
-    install_up = bringup_ok and health_up == health_total
-    if install_up:
-        for c in _step_list(profile, "acceptance"):
-            acc_total += 1
-            rc, tail = _run(c["check"], cwd=workdir, timeout=timeout, env=run_env)
-            ok = rc == 0
-            report["acceptance"].append(
-                {"name": c["name"], "ok": ok, **({} if ok else {"detail": tail})}
-            )
-            if ok:
-                acc_pass += 1
-            else:
-                report["did_not_transfer"].append(f"acceptance:{c['name']}")
-    report["transfer_score"] = round(acc_pass / acc_total, 4) if acc_total else 0.0
-    report["transfer"] = [acc_pass, acc_total]
-
-    # --- outcome -----------------------------------------------------------
-    if not install_up:
-        report["outcome"] = "honest-failure"
-        report["reason"] = "did not come up cleanly on this target"
-    elif acc_total and acc_pass == acc_total:
-        report["outcome"] = "built"
-        report["reason"] = "install gate up, all acceptance checks passed"
-    else:
-        report["outcome"] = "honest-failure"
-        report["reason"] = "came up, but not everything transferred"
-
-    # --- teardown: a hoist leaves the target as it found it -----------------
-    # Always tear down the isolated namespace once graded, whatever the outcome,
-    # so onboarding adds nothing lasting and removes nothing it did not create.
-    if isolate and iso.get("teardown") and has_bringup:
-        rc, tail = _run(iso["teardown"], cwd=workdir, timeout=timeout, env=run_env)
-        report["teardown"] = {"ran": True, "ok": rc == 0,
-                              **({} if rc == 0 else {"detail": tail})}
-
-    # Verify the blast radius is byte-identical to before: our namespace's
-    # resources were created after the snapshot and removed by teardown, so a
-    # clean hoist nets to zero and leaves everything else untouched.
-    if blast_before is not None:
-        blast_after = _snapshot(blast_probe, workdir, run_env, timeout)
-        clean = blast_after == blast_before
-        report["blast_radius"] = {"clean": clean,
-                                  "protected_before": len(blast_before),
-                                  "protected_after": len(blast_after)}
-        if not clean:
-            report["did_not_transfer"].append("blast_radius:touched-pre-existing-state")
-    return report
+    finally:
+        # An environmental substrate is always torn down, whatever the outcome, so
+        # onboarding adds nothing lasting. Run the config's own teardown inside it
+        # first (best-effort), then destroy the substrate, then verify the host
+        # daemon is byte-identical to before we provisioned: the environmental
+        # guarantee, which holds even for a config that ignored its own isolation.
+        if sub is not None and sub.name != "host":
+            if isolate and iso.get("teardown") and has_bringup and "workdir" in report:
+                sub.exec(iso["teardown"], report["workdir"], base_over, timeout)
+            ok, _ = sub.teardown()
+            if isinstance(report.get("substrate"), dict):
+                report["substrate"]["torn_down"] = ok
+            if host_blast_before is not None:
+                host_blast_after = substrate.host_daemon_snapshot(timeout)
+                clean = host_blast_after == host_blast_before
+                report["blast_radius"] = {"clean": clean,
+                                         "protected_before": len(host_blast_before),
+                                         "protected_after": len(host_blast_after)}
+                if not clean:
+                    report["did_not_transfer"].append(
+                        "blast_radius:touched-pre-existing-state")
 
 
 def format_report(r):
@@ -294,6 +417,11 @@ def format_report(r):
     banner = {"built": "BUILT", "honest-failure": "HONEST-FAILURE",
               "cannot-build": "CANNOT-BUILD", "feasible": "FEASIBLE"}.get(o, o.upper())
     lines.append(f"{banner}  [{r['app']} / {r.get('profile','?')}]  {r.get('reason','')}")
+    sub = r.get("substrate")
+    if isinstance(sub, dict) and sub.get("name"):
+        strength = sub.get("strength", "?")
+        note = "" if strength != "host" else " (same-host namespace: a deploy can still reach host state)"
+        lines.append(f"  substrate: {sub['name']} / {strength}{note}")
     if o == "cannot-build":
         if r.get("detail"):
             lines.append(f"  detail: {r['detail'].splitlines()[-1] if r['detail'] else ''}")
@@ -314,6 +442,9 @@ def format_report(r):
     if br and not br.get("clean"):
         lines.append("  ** BLAST RADIUS VIOLATED: the hoist changed state outside its "
                      "namespace despite declaring isolation **")
+    elif br and r.get("substrate", {}).get("strength") not in (None, "host"):
+        lines.append(f"  blast radius clean: host state identical "
+                     f"({br['protected_before']} resources) before and after")
     if r.get("did_not_transfer"):
         lines.append("  did not transfer: " + ", ".join(r["did_not_transfer"]))
     return "\n".join(lines)

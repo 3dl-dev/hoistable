@@ -1,0 +1,34 @@
+{
+  "app": "honcho",
+  "source": { "clone": "https://github.com/plastic-labs/honcho", "dir": "honcho" },
+  "binds": [
+    { "name": "docker", "probe": "docker version --format '{{.Server.Version}}'", "required": true }
+  ],
+  "default_profile": "minimal",
+  "profiles": {
+    "minimal": {
+      "isolation": {
+        "require": "environmental",
+        "why": "honcho is an external app we have never hoisted; a fresh clone is not a clean target. Run it where a deploy cannot reach host state, whatever its compose declares (fixed project name, loopback ports, named volumes)."
+      },
+      "preflight": [
+        { "name": "docker-daemon-reachable", "probe": "docker info >/dev/null 2>&1", "required": true }
+      ],
+      "bringup": [
+        { "name": "copy-compose", "run": "cp docker-compose.yml.example docker-compose.yml" },
+        { "name": "copy-env", "run": "cp .env.template .env 2>/dev/null || true" },
+        { "name": "compose-up-minimal-3", "run": "docker compose up -d --build --wait --wait-timeout 600 database redis api" }
+      ],
+      "health": [
+        { "name": "database", "check": "docker compose exec -T database pg_isready -U postgres" },
+        { "name": "redis", "check": "docker compose exec -T redis redis-cli ping" },
+        { "name": "api-health-endpoint", "check": "curl -fsS http://localhost:8000/health" }
+      ],
+      "acceptance": [
+        { "name": "health-reports-ok", "check": "curl -fsS http://localhost:8000/health | grep -qi ok" },
+        { "name": "openapi-served", "check": "curl -fsS http://localhost:8000/openapi.json | grep -q '\"openapi\"'" },
+        { "name": "workspace-crud-roundtrip", "check": "curl -fsS -X POST http://localhost:8000/v3/workspaces -H 'Content-Type: application/json' -d '{\"name\":\"hoist-smoke\"}' | grep -q hoist-smoke" }
+      ]
+    }
+  }
+}
