@@ -1,0 +1,25 @@
+{
+  "app": "hoistable",
+  "_authored_by": "hoist author (self-hosting reference: hoistable's own Layer 2 config)",
+  "source": { "clone": "/home/baron/projects/hoistable/.claude/worktrees/impl-baseline", "dir": "hoistable" },
+  "binds": [
+    { "name": "git", "probe": "git --version", "required": true },
+    { "name": "python3", "probe": "python3 --version", "required": true }
+  ],
+  "default_profile": "default",
+  "profiles": {
+    "default": {
+      "isolation": { "none": true, "why": "hermetic: runs the project's own tests in a throwaway clone; starts no daemons, binds no host ports, writes no shared state" },
+      "bringup": [ { "name": "no-build", "run": "true" } ],
+      "health": [ { "name": "clone-present", "check": "test -e ." } ],
+      "acceptance": [
+        { "name": "test_author",    "check": "python3 tests/test_author.py" },
+        { "name": "test_cards",     "check": "python3 tests/test_cards.py" },
+        { "name": "test_envelope",  "check": "python3 tests/test_envelope.py" },
+        { "name": "test_hoist",     "check": "python3 tests/test_hoist.py" },
+        { "name": "test_petard",    "check": "python3 tests/test_petard.py" },
+        { "name": "test_translate", "check": "python3 tests/test_translate.py" }
+      ]
+    }
+  }
+}

@@ -23,21 +23,54 @@ import json
 import os
 import sys
 import tempfile
+import urllib.request
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "envelope"))
 import envelope  # noqa: E402
 
+_HERE = os.path.dirname(os.path.abspath(__file__))
 
-def resolve_config(ref):
-    """Resolve a config reference to a loaded config dict. Local path is
-    implemented; an index lookup and a GitHub/web URL are extension points the
-    hoist skill fills in."""
+
+def _default_index():
+    return os.environ.get("HOIST_INDEX") or os.path.join(_HERE, "..", "index.json")
+
+
+def _load_json_path(path):
+    with open(path) as f:
+        return json.load(f)
+
+
+def _fetch_json_url(url):
+    with urllib.request.urlopen(url, timeout=30) as r:  # noqa: S310 - operator-supplied URL
+        return json.loads(r.read().decode())
+
+
+def resolve_config(ref, index_path=None):
+    """Resolve a config reference to a loaded config dict, the way brew finds a
+    formula, in order: a local path, the index (by app name), a URL. A web search
+    is the remaining extension point (the hoist skill drives that interactively).
+    """
+    # 1. a direct local path
     if os.path.isfile(ref):
-        with open(ref) as f:
-            return json.load(f)
+        return _load_json_path(ref)
+    # 2. an app name in the index
+    index_path = index_path or _default_index()
+    if index_path and os.path.isfile(index_path):
+        index = _load_json_path(index_path)
+        entry = index.get(ref)
+        if entry:
+            cfg = entry["config"]
+            if cfg.startswith("http://") or cfg.startswith("https://"):
+                return _fetch_json_url(cfg)
+            if not os.path.isabs(cfg):
+                cfg = os.path.join(os.path.dirname(os.path.abspath(index_path)), cfg)
+            return _load_json_path(cfg)
+    # 3. a URL
+    if ref.startswith("http://") or ref.startswith("https://"):
+        return _fetch_json_url(ref)
     raise SystemExit(
-        f"could not resolve config: {ref!r} "
-        "(only local paths are implemented; index/URL discovery is a skill extension point)"
+        f"could not resolve config: {ref!r} (not a local path, not in the index "
+        f"{index_path!r}, not a URL). Author one with `hoist author <repo>`."
     )
 
 

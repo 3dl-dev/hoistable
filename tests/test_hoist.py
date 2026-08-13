@@ -62,6 +62,28 @@ class HoistDriver(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(d, ".up")))
 
 
+class Resolve(unittest.TestCase):
+
+    def test_resolves_local_path(self):
+        cfg = _write_config({"app": "x", "profiles": {"default": {
+            "isolation": {"none": True, "why": "t"},
+            "acceptance": [{"name": "a", "check": "true"}]}}})
+        self.assertEqual(hoist.resolve_config(cfg)["app"], "x")
+
+    def test_resolves_name_via_index(self):
+        d = tempfile.mkdtemp()
+        with open(os.path.join(d, "c.json"), "w") as f:
+            json.dump({"app": "named"}, f)
+        idx = os.path.join(d, "index.json")
+        with open(idx, "w") as f:
+            json.dump({"named": {"config": "c.json"}}, f)
+        self.assertEqual(hoist.resolve_config("named", index_path=idx)["app"], "named")
+
+    def test_unresolvable_raises(self):
+        with self.assertRaises(SystemExit):
+            hoist.resolve_config("no-such-app", index_path="/nonexistent/index.json")
+
+
 if __name__ == "__main__":
     result = unittest.main(exit=False, verbosity=0).result
     if result.wasSuccessful():

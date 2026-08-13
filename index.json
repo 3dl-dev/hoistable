@@ -1,0 +1,6 @@
+{
+  "_comment": "The hoist index: app name -> where its Layer 2 config lives (a path relative to this file, or a URL). This is what `hoist <name>` searches, the way brew searches its formula index. Federated: anyone can keep their own index and point HOIST_INDEX at it; nothing is registered here unless its owner adds it.",
+  "agent-dyno": { "config": "examples/agent-dyno/config.json" },
+  "eaf":        { "config": "examples/eaf/config.json" },
+  "hoistable":  { "config": "examples/hoistable/config.json" }
+}
