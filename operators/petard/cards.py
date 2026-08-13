@@ -59,16 +59,31 @@ def extract_script_card(path):
     }
 
 
-def extract_help_card(cmd, timeout=30):
-    """One card harvested from a tool's own --help. The help text is ground truth
-    for a universal infra command (docker compose restart, kubectl rollout
-    restart) that no project script wraps."""
+def _host_run(cmd, timeout):
     import subprocess
     try:
         p = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
-    except Exception:  # noqa: BLE001
+        return p.returncode, (p.stdout or "") + (p.stderr or "")
+    except Exception as e:  # noqa: BLE001
+        return 127, f"(could not run: {e})"
+
+
+def extract_help_card(cmd, timeout=30, run=None):
+    """One card harvested from a tool's own --help. The help text is ground truth
+    for a universal infra command (docker compose restart, kubectl rollout
+    restart) that no project script wraps.
+
+    run is the command runner, (cmd, timeout) -> (rc, text), default host. Pass a
+    substrate runner (build_corpus.substrate_runner) to harvest the --help of a
+    command as it exists INSIDE the running deploy (contract C), not on the host."""
+    run = run or _host_run
+    rc, out = run(cmd, timeout)
+    # No card unless the command actually ran and produced its own help. A command
+    # that is absent (inside the substrate or on the host) fails here and yields
+    # nothing, rather than a fabricated card pointing at a command that is not there.
+    if rc != 0:
         return None
-    lines = [l.rstrip() for l in ((p.stdout or "") + (p.stderr or "")).splitlines()]
+    lines = [l.rstrip() for l in out.splitlines()]
     desc = next((l.strip() for l in lines
                  if l.strip() and not l.strip().lower().startswith("usage:")), "")
     usage_idx = next((i for i, l in enumerate(lines)
@@ -118,8 +133,11 @@ def extract_makefile_cards(path):
     return cards
 
 
-def build_cards(spec, root="."):
-    """spec: {scripts: [paths], makefiles: [paths]} relative to root."""
+def build_cards(spec, root=".", run=None):
+    """spec: {scripts: [paths], makefiles: [paths], helpcards: [cmds]} relative to
+    root. run is the command runner for helpcards, (cmd, timeout) -> (rc, text),
+    default host. Pass a substrate runner to harvest helpcards from inside the
+    running deploy (contract C); script/makefile cards read files under root."""
     cards = []
     for rel in spec.get("scripts", []):
         p = os.path.join(root, rel)
@@ -137,7 +155,7 @@ def build_cards(spec, root="."):
                 c["source"] = c["source"].replace(p, rel)
                 cards.append(c)
     for cmd in spec.get("helpcards", []):
-        c = extract_help_card(cmd)
+        c = extract_help_card(cmd, run=run)
         if c:
             cards.append(c)
     return cards
