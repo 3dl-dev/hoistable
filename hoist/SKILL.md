@@ -10,8 +10,12 @@ whether or not the app was ever distributed hoistably.
 
 - **The app has a config already.** Find it the way brew finds a formula, in this
   order: a local path, the index, a GitHub URL, a web search. Then run it.
-- **The app has no config.** Author one with the user (see the develop operator and
-  the config schema in `envelope/README.md`), making them its author, then run it.
+- **The app has no config.** You author one by reading the repo: understand how it
+  builds, tests, and deploys, and what a clean-target run needs, then write the config
+  (schema in `envelope/README.md`). This is judgment work and adapts to any language or
+  shape. `hoist/author.py` drafts a first cut for common cases (hermetic test repos,
+  docker-compose) with `_TODO`s where a machine cannot infer intent; treat it as a
+  starting point you complete, not the author.
 
 Either way you reach a deployed, graded system, or an honest reason you did not.
 

@@ -58,6 +58,14 @@ def _step_list(profile, key):
     return profile.get(key, []) or []
 
 
+def _snapshot(probe, cwd, env, timeout):
+    """A sorted snapshot of the blast radius: the resources a hoist must not
+    touch. Compared before deploy and after teardown; any difference means the
+    hoist changed something outside its own namespace, declaration or not."""
+    _, out = _run(probe, cwd=cwd, timeout=timeout, env=env)
+    return sorted(line for line in out.splitlines() if line.strip())
+
+
 def _free_port():
     """Ask the OS for an unused host port so an isolated hoist never fights an
     existing instance for a fixed port."""
@@ -193,6 +201,12 @@ def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT,
         report["reason"] = "binds, preflight, and isolation checks pass; deploy would proceed"
         return report
 
+    # Snapshot the blast radius before we touch anything: what must be identical
+    # after teardown. This catches a config that declared isolation but whose
+    # commands stomped pre-existing state anyway (the declaration-vs-behavior gap).
+    blast_probe = iso.get("blast_radius_probe") if isolate else None
+    blast_before = _snapshot(blast_probe, workdir, run_env, timeout) if blast_probe else None
+
     # --- bringup: the install gate -----------------------------------------
     bringup_ok = True
     for s in _step_list(profile, "bringup"):
@@ -259,6 +273,18 @@ def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT,
         rc, tail = _run(iso["teardown"], cwd=workdir, timeout=timeout, env=run_env)
         report["teardown"] = {"ran": True, "ok": rc == 0,
                               **({} if rc == 0 else {"detail": tail})}
+
+    # Verify the blast radius is byte-identical to before: our namespace's
+    # resources were created after the snapshot and removed by teardown, so a
+    # clean hoist nets to zero and leaves everything else untouched.
+    if blast_before is not None:
+        blast_after = _snapshot(blast_probe, workdir, run_env, timeout)
+        clean = blast_after == blast_before
+        report["blast_radius"] = {"clean": clean,
+                                  "protected_before": len(blast_before),
+                                  "protected_after": len(blast_after)}
+        if not clean:
+            report["did_not_transfer"].append("blast_radius:touched-pre-existing-state")
     return report
 
 
@@ -284,6 +310,10 @@ def format_report(r):
     for c in r.get("acceptance", []):
         mark = "ok  " if c["ok"] else "FAIL"
         lines.append(f"    [{mark}] {c['name']}")
+    br = r.get("blast_radius")
+    if br and not br.get("clean"):
+        lines.append("  ** BLAST RADIUS VIOLATED: the hoist changed state outside its "
+                     "namespace despite declaring isolation **")
     if r.get("did_not_transfer"):
         lines.append("  did not transfer: " + ", ".join(r["did_not_transfer"]))
     return "\n".join(lines)

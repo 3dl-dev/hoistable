@@ -1,57 +1,55 @@
 ---
 name: develop
-description: The dev-team lifecycle for a self-hosted open-source app. Understand how to iterate on it and test it, fork it or keep a separate tree, pull from upstream (verified against the tests), and contribute back when the user chooses.
+description: The dev-team lifecycle for a self-hosted open-source app. You (the agent) understand how to iterate on it and test it, fork it or keep a separate tree, pull from upstream (verified against the tests), and contribute back when the user chooses.
 ---
 
 develop is the operator for people who run their own copy of an open-source project
-and want to keep developing it, not just operate a frozen build. It is what keeps a
-self-hoster off a fork that rots: your own tree that can still track upstream and give
-back to it. It is the biggest operator, because "run your own dev team on this project"
-is a big job. It is harness-agnostic: git, plus gh only for the optional pull request.
+and want to keep developing it. **You do this work with judgment** -- every project's
+build, test loop, and hosting differ, and adapting to them is the job. The scripts
+below are tested reference builds for the exact, safe git mechanics; use them when they
+fit, adapt or regenerate them when they do not (build-rule 1). What is yours is the
+understanding: reading an unfamiliar codebase, deciding fork vs separate tree,
+resolving a real merge conflict, judging whether a change is worth upstreaming.
 
 ## Understand how to iterate and test
 
-    python3 operators/develop/guide.py <repo>
+Read the project the way a new contributor would: its README, CONTRIBUTING, Makefile,
+CI config, and test files. Learn how it is built, how it is tested, and where the
+contribution path is, in the project's own terms. `guide.py <repo>` gives you a first
+harvest of that from ground truth (test commands, targets, CONTRIBUTING, CI) -- a
+starting point you refine by reading, not a substitute for reading.
 
-Before changing anything, learn the project's own dev loop from its ground truth (the
-petard discipline: generated, never authored). guide harvests the test commands,
-build/run targets, the CONTRIBUTING path, and the CI workflows from the Makefile,
-package scripts, CI config, and the test files themselves. It tells the user how to
-test and where the contribution path is, in the project's own terms.
+## Own the tree: fork or keep it separate
 
-## Own your tree: fork or keep it separate
+Decide with the user which they want, then set the remotes up. `tree.py adopt` does it
+safely (fork: origin = your fork, upstream = original; or separate: your own origin,
+upstream tracked). Fork when they mean to contribute back; separate tree when they mean
+to diverge privately.
 
-    python3 operators/develop/tree.py adopt <repo> <upstream_url> --mode fork --fork-url <url>
-    python3 operators/develop/tree.py adopt <repo> <upstream_url> --mode separate
+## Pull from upstream, then verify
 
-- **fork**: origin is your fork, upstream is the original. For contributing back.
-- **separate tree**: your own origin, upstream tracked for pulls. For a private
-  divergence you do not intend to send back.
+`tree.py pull-upstream` fetches upstream and integrates it, reporting clean or conflict
+and leaving a conflict for you to resolve with judgment rather than smearing over it. A
+sync is not done until the tests pass again: after a pull, run the project's acceptance
+(the same checks the envelope grades) before you trust it. Use `tree.py diverge` to see
+how far ahead/behind upstream the tree has drifted.
 
-## Pull from upstream, verified
+## Contribute back, on the user's say
 
-    python3 operators/develop/tree.py pull-upstream <repo> --branch main
-
-Fetch upstream and integrate it. It reports clean or conflict honestly and, on
-conflict, leaves the tree for you to resolve rather than smearing over it. A sync is
-not done until the tests pass again: after a pull, run the project's acceptance (the
-same checks the envelope grades) before you trust it. No silent success on an upstream
-merge either.
-
-    python3 operators/develop/tree.py diverge <repo>     # how far ahead/behind upstream
-
-## Contribute back, when the user chooses
-
-    python3 operators/develop/tree.py contribute <repo> <branch>
-
-Start a branch for a change to send upstream. Whether to open the pull request is the
-user's call, never automatic; the develop skill drives `gh pr create` only on their
-say-so. Keeping a separate tree and never upstreaming is an equally valid path.
+`tree.py contribute` starts a branch for a change. Opening the pull request is the
+user's call, never automatic -- you drive `gh pr create` only when they ask. Keeping a
+separate tree and never upstreaming is an equally valid path.
 
 ## What develop emits
 
 Contract A: the deployable artifact and its config surface, the knobs a deployment may
-turn versus what is fixed. preflight reads the surface to scope a deployment; sysop
-deploys against it. And per build-rule 1, a feature ships as a reference build with its
-own acceptance test, which is exactly what the envelope runs on the target to grade the
-install. develop and the honest grade are two ends of the same thing.
+turn versus what is fixed. And per build-rule 1, a change ships as a reference build
+with its own acceptance test, which is exactly what the envelope runs on the target to
+grade the install. develop and the honest grade are two ends of the same thing.
+
+## Where the code stays load-bearing
+
+The git mechanics are scripted because a wrong merge or remote is worse than an
+inflexible one, and because they are worth testing. The judgment around them is yours.
+This is the split across all of hoistable: agents author and adapt (the long tail);
+code enforces and falls back (the git safety, and petard when the frontier is down).

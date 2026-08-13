@@ -144,6 +144,36 @@ class EnvelopeOutcomes(unittest.TestCase):
         # teardown removed the marker: the target is left as it was found
         self.assertFalse(os.path.exists(os.path.join(d, "ns-marker")))
 
+    def test_blast_radius_catches_a_stomp_despite_declared_isolation(self):
+        d = _target()
+        with open(os.path.join(d, "sentinel"), "w") as f:
+            f.write("orig\n")  # pre-existing state outside our namespace
+        config = {"app": "toy", "profiles": {"default": {
+            "isolation": {"namespace_env": "MYNS", "collision_probe": "true",
+                          "teardown": "true", "blast_radius_probe": "cat sentinel"},
+            "bringup": [{"name": "stomp", "run": "echo stomped > sentinel"}],
+            "health": [{"name": "h", "check": "true"}],
+            "acceptance": [{"name": "a", "check": "true"}],
+        }}}
+        r = envelope.run_envelope(config, d)
+        # grading may say built, but the blast-radius check catches the stomp
+        self.assertFalse(r["blast_radius"]["clean"])
+        self.assertIn("blast_radius:touched-pre-existing-state", r["did_not_transfer"])
+
+    def test_blast_radius_clean_when_nothing_outside_is_touched(self):
+        d = _target()
+        with open(os.path.join(d, "sentinel"), "w") as f:
+            f.write("orig\n")
+        config = {"app": "toy", "profiles": {"default": {
+            "isolation": {"namespace_env": "MYNS", "collision_probe": "true",
+                          "teardown": "true", "blast_radius_probe": "cat sentinel"},
+            "bringup": [{"name": "up", "run": "echo up > .up"}],
+            "health": [{"name": "h", "check": "test -f .up"}],
+            "acceptance": [{"name": "a", "check": "true"}],
+        }}}
+        r = envelope.run_envelope(config, d)
+        self.assertTrue(r["blast_radius"]["clean"])
+
     def test_preflight_only_reports_feasible_and_deploys_nothing(self):
         d = _target()
         config = {
