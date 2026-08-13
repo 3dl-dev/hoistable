@@ -303,6 +303,35 @@ def resolve_substrate(config, profile, target_dir, timeout=60, log=lambda m: Non
                   f"strength {require!r}; tried: {', '.join(tried) or '(none)'}")
 
 
+def probe_manifest(timeout=30):
+    """The capability manifest: which isolation rungs this target offers RIGHT
+    NOW, re-derived by probing. The host floor is always present; each
+    environmental rung is available iff its host prerequisite answers. This is the
+    thing a saved resolution snapshots as a hint and a replay RE-PROBES rather than
+    trusts (continuation identity: the environment is re-derived, never remembered).
+    """
+    manifest = [{"name": "host", "strength": "host", "available": True}]
+    for name, strength, prereq, _factory in ENVIRONMENTAL_LADDER:
+        rc, _ = _sh(prereq, timeout=timeout)
+        manifest.append({"name": name, "strength": strength, "available": rc == 0})
+    return manifest
+
+
+def choose_from_manifest(manifest, require="host"):
+    """Given a manifest and a required strength, the rung a resolution would pick:
+    the first available rung that meets or exceeds the strength. None if nothing
+    on the target meets it now (an honest cannot-build on replay)."""
+    if require in ("namespace", None):
+        require = "host"
+    need = STRENGTHS.get(require)
+    if need is None:
+        return None
+    for rung in manifest:
+        if rung.get("available") and STRENGTHS.get(rung["strength"], -1) >= need:
+            return {"name": rung["name"], "strength": rung["strength"]}
+    return None
+
+
 def probe_substrate(config, profile, timeout=60):
     """The know-early pass for isolation: would a substrate resolve, without
     provisioning anything? preflight must touch nothing, so it probes each rung's
