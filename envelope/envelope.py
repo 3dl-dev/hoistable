@@ -68,9 +68,15 @@ def _free_port():
     return port
 
 
-def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT):
+def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT,
+                 until="full"):
     """Hoist and grade one config. Returns a report dict; never raises on a
-    failed check (a failed check is data, not an exception)."""
+    failed check (a failed check is data, not an exception).
+
+    until="preflight" runs only the know-early pass (binds, preflight probes,
+    isolation checks) and stops before deploying anything: this is what the
+    preflight operator runs to give a feasibility verdict without touching the
+    target. until="full" (default) deploys and grades."""
     profiles = config.get("profiles", {})
     if profile_name is None:
         profile_name = config.get("default_profile") or next(iter(profiles), None)
@@ -180,6 +186,13 @@ def run_envelope(config, target_dir, profile_name=None, timeout=DEFAULT_TIMEOUT)
                 report["detail"] = tail
                 return report
 
+    # If we are only running preflight (the operator's know-early pass), stop
+    # here: everything up to deploy has passed, and we have touched nothing.
+    if until == "preflight":
+        report["outcome"] = "feasible"
+        report["reason"] = "binds, preflight, and isolation checks pass; deploy would proceed"
+        return report
+
     # --- bringup: the install gate -----------------------------------------
     bringup_ok = True
     for s in _step_list(profile, "bringup"):
@@ -253,11 +266,16 @@ def format_report(r):
     lines = []
     o = r["outcome"]
     banner = {"built": "BUILT", "honest-failure": "HONEST-FAILURE",
-              "cannot-build": "CANNOT-BUILD"}.get(o, o.upper())
+              "cannot-build": "CANNOT-BUILD", "feasible": "FEASIBLE"}.get(o, o.upper())
     lines.append(f"{banner}  [{r['app']} / {r.get('profile','?')}]  {r.get('reason','')}")
     if o == "cannot-build":
         if r.get("detail"):
             lines.append(f"  detail: {r['detail'].splitlines()[-1] if r['detail'] else ''}")
+        return "\n".join(lines)
+    if o == "feasible":
+        ns = r.get("isolation", {}).get("namespace")
+        if ns:
+            lines.append(f"  would deploy into isolated namespace {ns}; nothing deployed")
         return "\n".join(lines)
     hs = r.get("health_score", [0, 0])
     lines.append(f"  install gate: {hs[0]}/{hs[1]} healthy")
@@ -279,6 +297,8 @@ def main(argv=None):
                     help="clean target to hoist onto (default: a temp dir)")
     ap.add_argument("--json-out", default=None, help="write the JSON report here")
     ap.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
+    ap.add_argument("--until", choices=["full", "preflight"], default="full",
+                    help="preflight = know-early pass only, deploys nothing")
     args = ap.parse_args(argv)
 
     with open(args.config) as f:
@@ -291,14 +311,15 @@ def main(argv=None):
         target = tmp
     os.makedirs(target, exist_ok=True)
 
-    report = run_envelope(config, target, args.profile, args.timeout)
+    report = run_envelope(config, target, args.profile, args.timeout, until=args.until)
     print(format_report(report))
     if args.json_out:
         with open(args.json_out, "w") as f:
             json.dump(report, f, indent=2)
 
-    # Exit code: 0 built, 1 honest-failure, 2 cannot-build. A grader can branch on it.
-    return {"built": 0, "honest-failure": 1, "cannot-build": 2}.get(report["outcome"], 3)
+    # Exit code: 0 built/feasible, 1 honest-failure, 2 cannot-build. A grader can branch.
+    return {"built": 0, "feasible": 0, "honest-failure": 1,
+            "cannot-build": 2}.get(report["outcome"], 3)
 
 
 if __name__ == "__main__":

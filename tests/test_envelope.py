@@ -144,6 +144,24 @@ class EnvelopeOutcomes(unittest.TestCase):
         # teardown removed the marker: the target is left as it was found
         self.assertFalse(os.path.exists(os.path.join(d, "ns-marker")))
 
+    def test_preflight_only_reports_feasible_and_deploys_nothing(self):
+        d = _target()
+        config = {
+            "app": "toy",
+            "profiles": {"default": {
+                "isolation": {"namespace_env": "MYNS", "collision_probe": "true",
+                              "teardown": "true"},
+                "bringup": [{"name": "up", "run": "echo x > should-not-exist"}],
+                "health": [{"name": "m", "check": "test -f should-not-exist"}],
+                "acceptance": [{"name": "a", "check": "true"}],
+            }},
+        }
+        r = envelope.run_envelope(config, d, until="preflight")
+        self.assertEqual(r["outcome"], "feasible")
+        self.assertTrue(r["isolation"]["namespace"].startswith("hoist-toy-"))
+        self.assertEqual(r["bringup"], [])  # deploy never ran
+        self.assertFalse(os.path.exists(os.path.join(d, "should-not-exist")))
+
 
 if __name__ == "__main__":
     result = unittest.main(exit=False, verbosity=0).result
