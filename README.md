@@ -10,62 +10,119 @@ clones the repo, runs the configuration, does the deployment, and fills the Pare
 long-tail gaps that used to make distribution expensive. You ship the recipe, and
 the software pulls itself up by its own bootstraps.
 
-Hoistable is the property and the promise: hand over a recipe, and the software
-raises itself into a running system anywhere.
+## hoist: the one command
 
-## The three operators
+`hoist` is the entry point, and the mental model is Homebrew. `hoist <app>` finds
+that app's hoistable config the way `brew` finds a formula, and takes you to a
+running system. It works in two modes:
 
-Reusable, harness-agnostic, product-independent. A per-product skill is a thin
-recipe over these:
+- **The app is already distributed hoistably.** `hoist` finds its config through an
+  index, a GitHub URL, or a web search, and runs it. This is `brew install`.
+- **The app is not distributed hoistably.** `hoist` builds the config for you and
+  makes *you* the author of that app's Layer 2. This is writing the formula, done
+  with you instead of by you.
 
-- **devops** (build time): clone, configure, deploy, and hand off operational
-  state. Its output includes runbooks that run without a frontier model.
-- **sysops** (run time): consume the handoff and operate the deployed system. Its
-  backup job is keeping the LOM's corpus fresh.
-- **LOM** (lights-out management for the operator's practice): a local, always
-  reachable retrieval-and-translation layer that keeps *you* able to act when the
-  frontier stack is down or rate limited. Not autonomous ops. It pulls facts from a
-  local corpus and translates intent into the shape of the command. Independent
-  power and network path, like a server's management board: if it depends on the
-  thing that is down, it is not a LOM.
+Either path ends at a deployed, operable system. That is what covers both audiences
+at once: developers who want a way to distribute their software, and users who want
+to run software no developer ever distributed hoistably.
 
-## The two contracts
+## The three layers
 
-What makes the three operators reusable instead of re-smuggling product knowledge
-into each skill. Both are first-class artifacts, not per-skill details. See
-[docs/contracts.md](docs/contracts.md).
+- **Layer 0, this repo.** The generators, plus a **versioned release** of the four
+  operator skills (develop, preflight, sysop, petard). It also carries the index
+  that `hoist` searches first.
+- **Layer 1, the hoister skill (`hoist`).** You add it to your harness. Run it
+  against an app to install or author it; run it inside a project to emit that
+  project's distributable config. This is the `hoist` role doing its work.
+- **Layer 2, the distributable config (the app's formula).** What an end user
+  installs. On install it **drives**: it pins the operator-skill versions from the
+  Layer 0 release (repeatability), does the local setup, clones the distributing
+  project, asks the user what they are here to do (develop or deploy), and walks them
+  through every prerequisite before it hands off to the operators. It takes the
+  wheel; it never leaves the user at a blank prompt with nothing to do. It also carries
+  the app's acceptance test and self-grades on the target (see below), so an install
+  never reports success it did not earn.
 
-1. **devops to sysops**: the operational handoff state.
-2. **sysops to LOM**: the continuously refreshed operational index.
+## The operators
 
-## How it ships
+Reusable, harness-agnostic, product-independent. Each is a skill that loads its
+method into the session (and may dispatch agents for long-horizon work). A project's
+config includes only the operators that project needs.
 
-The primary channel is a **skill**. A hoistable project distributes itself as a
-skill: installing the project means installing a skill, and invoking it hoists the
-instance into place (devops), operates it (sysops), and carries the local fallback
-(LOM). The skill is the **bootstrap**, the minimal portable thing you install that
-pulls the full project up after it.
+- **develop** (extend the product): add features through the product's manifest and
+  handlers. Needed by extensible products; skipped by fixed tools.
+- **preflight** (scope the deployment with the user): work with the user to fix the
+  dimensions of the deployment, scale, single- vs multi-tenant, dev vs prod, and the
+  infra target. It also probes the target for the known long-tail gaps and predicts
+  whether the deployment will work, so the user learns early rather than mid-deploy.
+  It emits a scoped deployment plan and a feasibility verdict, and hands both to sysop.
+- **sysop** (deploy and operate): take the plan and chase it down. Deploy it, operate
+  it day to day, and own the secrets, dovetailing with whatever the user already has
+  or providing its own. sysop **composes external skills** for everything
+  infra-specific (AWS, Azure, DigitalOcean, local VM, SSL and certs, SSO, security
+  monitoring) instead of internalizing that knowledge. Product-specific run-time
+  operations are sysop scope too: agent-dyno distributing a leaderboard, or
+  publishing each team member's findings, is sysop work inside that product, not a
+  separate operator.
+- **petard** (lights-out fallback): the no-frontier operational fallback that sysop
+  trains and keeps fresh. It is retrieval-grounded and runs independent of the
+  frontier stack, on its own power and network path. Hoist with your own petard: the
+  petard is the charge that lifts you when the frontier is down or rate limited. If
+  it depends on the thing that is down, it is not a petard.
 
-The skill is self-contained: it bakes in the operator method plus the project's
-manifest and handlers, so it has no runtime dependency back on this repo. This
-repo's operator skills are the **generators**; a project's distribution skill is the
-self-contained **reference build** it emits.
+## The contracts
+
+What keeps the operators reusable instead of re-smuggling product knowledge into
+each config. The operators form a chain, develop to preflight to sysop to petard, and
+there is one contract per adjacent pair, specified only when both operators are
+present. When a project omits an operator the chain collapses: with no preflight,
+develop hands straight to sysop. See [docs/contracts.md](docs/contracts.md).
+
+- **develop to preflight**: the deployable artifact and its config surface.
+- **preflight to sysop**: the scoped deployment plan, carrying the artifact forward.
+- **sysop to petard**: the continuously refreshed operational index.
+
+## Knowing if it worked
+
+Prebuilt-binary distribution fails silently: the long-tail gaps leave the user
+thinking it installed when it did not transfer. Hoistable makes success measurable at
+two moments of truth. **Before** the deploy, preflight probes the target and predicts
+feasibility, so the user learns at the door whether this is going to work. **After** it
+runs, the config rebuilds the app's acceptance test on the actual target and prints an
+honest transfer score per check, saying plainly what did not transfer. No silent
+success.
+
+That transfer score is a normalized number, so it is also the gradeable output a
+downstream measure can aggregate across context, user, harness, and model, a
+leaderboard or an Agent Dyno run. Hoistable emits the number; it never depends on the
+thing that grades it. This is the same envelope as skillc (recipe, rebuild on install,
+self-test, honest score), carried by every hoistable config rather than published as a
+separate scoring skill.
+
+## Distribution and repeatability
+
+The primary channel is a skill: a hoistable project distributes itself as its
+Layer 2 config, and installing the project means installing that config. The config
+does not vendor the operators; it **pins a version** of each operator skill and
+pulls it from the Layer 0 release. Repeatability comes from the pin: the same config
+resolves to the same operators every time. Isolation still holds, because upgrading
+Layer 0 does not touch a config until its owner chooses to bump the pin. There is one
+pinned version line, not one per operator.
 
 A `SKILL.md` is the Claude Code adapter of this channel, not the whole of it. The
-neutral core is a self-contained recipe that hoists; other harnesses package it
-their own way. Skill is the primary channel, not the only one.
+neutral core is a self-contained recipe that hoists; other harnesses package it their
+own way. Operators load as skills under Claude Code; the same method ports behind a
+thin per-harness adapter.
 
-Two constraints carry over: the LOM ships inside the skill, but its execution path
-stays frontier-independent (a fallback that needs the frontier model is not a
-fallback); and Hoistable is its own first consumer, distributing its operators as
-skills.
+Hoistable is its own first consumer: it distributes its operators as skills, and the
+petard ships inside the config while its execution path stays frontier-independent.
 
 ## Build rules
 
-How the operators get built ([docs/build-rules.md](docs/build-rules.md)): ship
-source not binary (spec + generator + acceptance test); neutral core, thin adapters;
-self-contained; federated, no dependency; converge don't accrete; plain copy. First
-practiced in agent-dyno.
+How the operators get built ([docs/build-rules.md](docs/build-rules.md)): ship source
+not binary; neutral core, thin adapters; liftable and complete by reference; federated
+by pinned version line; converge don't accrete; point don't embed; no silent success;
+plain copy. First practiced in agent-dyno.
 
 ## Relation to Agent Dyno
 
@@ -76,6 +133,6 @@ the dyno.
 
 ## Status
 
-Founding spec. The thesis, the three operators, and the two contracts are captured.
-The operators themselves, the manifest-and-handlers extension mechanism, and the
-acceptance tests are not built yet.
+Founding spec. The thesis, the three layers, the `hoist` entry point, the four
+operators, and the three contracts are captured. The generators, the operator
+release, the index, and the acceptance tests are not built yet.
