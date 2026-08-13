@@ -21,14 +21,16 @@ live in envelope.py; hoist just sequences the two passes over it.
 import argparse
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import urllib.request
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "envelope"))
-import envelope  # noqa: E402
-
 _HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _HERE)
+sys.path.insert(0, os.path.join(_HERE, "..", "envelope"))
+import envelope  # noqa: E402
+import pins  # noqa: E402
 
 
 def _default_index():
@@ -78,9 +80,15 @@ def _indent(text):
     return "  " + text.replace("\n", "\n  ")
 
 
+def _envelope_py(kit_dir):
+    base = kit_dir if kit_dir else os.path.join(_HERE, "..")
+    return os.path.join(base, "envelope", "envelope.py")
+
+
 def hoist(ref, profile=None, target_dir=None, timeout=envelope.DEFAULT_TIMEOUT, emit=print):
-    """Drive an onboarding: preflight (deploy nothing) then, if feasible,
-    deploy and grade. Returns the final report."""
+    """Drive an onboarding: preflight (deploy nothing) then, if feasible, deploy
+    and grade. Runs the config's PINNED operators when it pins them (from the
+    verified release cache), the local repo otherwise. Returns the final report."""
     config = resolve_config(ref)
     app = config.get("app", "?")
     prof = profile or config.get("default_profile") or "default"
@@ -88,16 +96,35 @@ def hoist(ref, profile=None, target_dir=None, timeout=envelope.DEFAULT_TIMEOUT, 
         target_dir = tempfile.mkdtemp(prefix="hoist-target-")
     os.makedirs(target_dir, exist_ok=True)
 
-    emit(f"hoist: onboarding {app} (profile {prof})")
+    kit_dir = pins.resolve_operators(config)          # None -> local (dev mode)
+    envelope_py = _envelope_py(kit_dir)
+    fd, cfg_path = tempfile.mkstemp(prefix="hoist-cfg-", suffix=".json")
+    with os.fdopen(fd, "w") as f:
+        json.dump(config, f)
+
+    def run_phase(until):
+        rfd, report_path = tempfile.mkstemp(prefix="hoist-report-", suffix=".json")
+        os.close(rfd)
+        cmd = [sys.executable, envelope_py, cfg_path, "--until", until,
+               "--target-dir", target_dir, "--json-out", report_path,
+               "--timeout", str(timeout)]
+        if profile:
+            cmd += ["--profile", profile]
+        subprocess.run(cmd, capture_output=True, text=True)
+        with open(report_path) as f:
+            return json.load(f)
+
+    pinned = "" if kit_dir is None else f" [operators pinned {config['operators'].get('version')}]"
+    emit(f"hoist: onboarding {app} (profile {prof}){pinned}")
     emit("  [1/2] preflight: checking the target, deploying nothing ...")
-    pf = envelope.run_envelope(config, target_dir, profile, timeout, until="preflight")
+    pf = run_phase("preflight")
     emit(_indent(envelope.format_report(pf)))
     if pf["outcome"] != "feasible":
         emit(f"hoist: stopped at the door ({pf['outcome']}). Nothing was deployed.")
         return pf
 
     emit("  [2/2] deploy and grade ...")
-    full = envelope.run_envelope(config, target_dir, profile, timeout, until="full")
+    full = run_phase("full")
     emit(_indent(envelope.format_report(full)))
     emit(f"hoist: {full['outcome']} for {app}.")
     return full
