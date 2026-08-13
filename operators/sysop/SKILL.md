@@ -34,6 +34,35 @@ The substrate is a resolved bind like any other (see docs/contracts.md, "The sub
 handle"). It is also the handle petard harvests through, so the deploy sysop stands up
 is reachable by the lights-out layer even when it lives in a container or a cluster.
 
+## Author a rung just-in-time
+
+The rungs are a cache, not a menu (docs/ops-substrate.md). When a config needs an
+isolation substrate and no cached rung resolves for this target, sysop AUTHORS one.
+This is the loop, and you are the one who runs it -- there is no separate automation
+to build, because you doing this and a dispatched sysop agent doing this are the same
+thing. Do not try to pre-mint every contingency into a script; interrogate the target
+here, in the loop:
+
+1. **Interrogate the target.** Probe what isolation the host actually offers -- a
+   container daemon, a reachable cluster, user namespaces, a burnable VM, a cloud
+   account. Do the messy inference now; do not assume.
+2. **Author an adapter against the contract.** Implement the Substrate contract
+   (`{provision, exec, teardown, workroot, residue, strength, name}` in
+   `envelope/substrate.py`), matched to what you found. `DindSubstrate` and
+   `K3sSubstrate` are the reference builds -- follow their shape. Point, don't embed:
+   compose the target's own tooling (docker, kubectl, a cloud CLI), own only the glue.
+3. **Grade it against reality.** Run a real workload through the rung, verify it came
+   up, and verify teardown leaves no residue (the non-destructive invariant). A rung
+   that is not graded is not done. Add a test beside `tests/test_k3s.py`.
+4. **Label its honest strength.** Never claim a guarantee the rung does not provide.
+   k3s isolates the workload but runs its deploy driver on the host, so it is
+   `cluster`, not host-safe `environmental`. An honest weaker rung beats a dishonest
+   strong label; do not wire a rung into the environmental ladder unless it earns it.
+5. **Surface cost, then cache.** Local or standing infra is $0; a burnable cloud rung
+   has a price -- estimate it, gate it by policy, never spend silently. A graded rung
+   becomes a cached recipe (the resolution store) so the next operator pulls it instead
+   of re-authoring.
+
 ## Point, don't embed
 
 sysop is not the authority on AWS, Azure, DigitalOcean, SSL and certs, SSO, or security

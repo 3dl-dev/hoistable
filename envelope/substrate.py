@@ -287,6 +287,126 @@ class K3sSubstrate(Substrate):
         return [self.ns] if (rc == 0 and out.strip()) else []
 
 
+class SystemdSubstrate(Substrate):
+    """A rung that confines the workload inside a throwaway systemd transient
+    service, sandboxed by the system manager. Authored just-in-time for a host
+    that offers neither a spare docker daemon nor a cluster, but DOES run systemd
+    and grant passwordless sudo -- and where the obvious unprivileged path
+    (`unshare --user`) is dead: this box sets AppArmor
+    `apparmor_restrict_unprivileged_userns=1`, so an unprivileged user namespace
+    cannot be created, which takes plain `unshare` and user-mode systemd
+    sandboxing (both need a mount/net namespace) off the table. The system manager,
+    running as root, is not subject to that restriction, so it is the one thing here
+    that can still stand up real mount/network namespaces.
+
+    Each step runs as a transient unit (`systemd-run --pipe --wait --collect`) with:
+    PrivateNetwork (isolated netns, loopback only -- no host network egress),
+    ProtectSystem=strict + ReadWritePaths=<workroot> (the entire host filesystem is
+    read-only to the step except its own workroot), ProtectHome (host /home hidden),
+    PrivateTmp (private /tmp,/var/tmp), PrivateDevices, NoNewPrivileges. The workroot
+    is a root-owned dir under /run (tmpfs), shared across a hoist's steps so bringup's
+    files are there for health/acceptance, and reclaimed whole at teardown.
+
+    Honest strength, and the finding authoring it surfaced -- this is NOT dind's
+    host-safe 'environmental' guarantee, and it is weaker than k3s's 'cluster' on the
+    driver axis:
+
+      * What it DOES confine (verified by attack): the step cannot reach the network,
+        cannot write anywhere on the host filesystem but its workroot, and cannot see
+        host /home. A config that ignores its own isolation still cannot deface host
+        state through a step here.
+      * What it does NOT give: (1) the deploy DRIVER runs via `sudo systemd-run` as
+        ROOT on the host -- worse than k3s, whose kubectl driver is non-root; a
+        compromised driver invocation is root-on-host. (2) The payload runs as root
+        INSIDE the sandbox on the SHARED host kernel, and ProtectSystem only makes the
+        host fs read-only, not invisible -- the step can still READ most of the host
+        root filesystem, so it is confinement on the real machine, not a throwaway
+        image. (3) It requires passwordless sudo to exist at all.
+
+    So its strength is 'confined' (egress and host-writes are genuinely sandboxed),
+    distinct from 'environmental' (whole deploy host-safe on a throwaway fs) and from
+    'cluster'. An honest weaker rung: it earns neither the environmental ladder nor a
+    host-safe claim. Full host-safety here would need dind's throwaway-fs model, not
+    more directives.
+
+    This adapter is the authority on systemd sandboxing, not the grader. A host
+    without systemd, or without passwordless sudo, or where the sandbox will not
+    start, simply fails to provision -- an honest unresolved bind, not a crash."""
+
+    name = "systemd"
+    strength = "confined"
+
+    # The sandbox seal, applied to every step. Exactly the set graded against a real
+    # attack; adding directives risks an EXIT_NAMESPACE (200) on some kernels, so this
+    # stays the verified floor rather than a maximal wishlist.
+    SANDBOX = (
+        "-p PrivateNetwork=yes -p PrivateTmp=yes -p ProtectSystem=strict "
+        "-p ProtectHome=yes -p PrivateDevices=yes -p NoNewPrivileges=yes"
+    )
+
+    def __init__(self, app="app"):
+        self.id = f"hoist-sbx-{app}-{uuid.uuid4().hex[:8]}"
+        self.wr = f"/run/{self.id}"
+        self.provisioned = False
+
+    def workroot(self):
+        return self.wr
+
+    def provision(self):
+        # The isolation is the sandboxed unit; the workroot is just its writable
+        # scratch. Create it root-owned under /run (tmpfs), then prove the sandbox
+        # actually stands up on this host -- if sudo or systemd or the namespaces are
+        # missing, fail here having created nothing that outlives the attempt.
+        rc, tail = _sh(f"sudo -n mkdir -p {shlex.quote(self.wr)}", timeout=30)
+        if rc != 0:
+            return False, f"could not create workroot {self.wr} (sudo/systemd?): {tail}"
+        self.provisioned = True
+        rc, tail = _sh(
+            f"sudo -n systemd-run --pipe --wait --collect --quiet {self.SANDBOX} "
+            f"-p ReadWritePaths={shlex.quote(self.wr)} "
+            f"--working-directory={shlex.quote(self.wr)} "
+            f"sh -lc {shlex.quote('test -w . && ip -o link show | grep -qv .')}",
+            timeout=60)
+        # The probe body returns non-zero on purpose (grep -qv .), so rc reflects the
+        # SANDBOX standing up, not the body: a namespace failure is EXIT_NAMESPACE
+        # (200/226), which we treat as unavailable.
+        if rc in (200, 203, 226):
+            self.teardown()
+            return False, f"systemd sandbox would not start on this host: {tail}"
+        return True, self.wr
+
+    def exec(self, cmd, cwd, env_overrides, timeout):
+        workdir = cwd or self.wr
+        setenv = " ".join(
+            f"--setenv={shlex.quote(f'{k}={v}')}"
+            for k, v in (env_overrides or {}).items())
+        # RuntimeMaxSec bounds the unit itself: if the host-side _sh times out and
+        # kills the sudo client, systemd still owns the service, so cap its life here
+        # rather than leak a runaway step past the exec.
+        full = (
+            f"sudo -n systemd-run --pipe --wait --collect --quiet {self.SANDBOX} "
+            f"-p ReadWritePaths={shlex.quote(self.wr)} "
+            f"-p RuntimeMaxSec={max(1, int(timeout))} {setenv} "
+            f"--working-directory={shlex.quote(workdir)} "
+            f"sh -lc {shlex.quote(cmd)}")
+        return _sh(full, timeout=timeout)
+
+    def teardown(self):
+        if not self.provisioned:
+            return True, ""
+        # The units are transient (--collect) and gone already; reclaiming the
+        # workroot reclaims the substrate's whole footprint. /run is tmpfs, so this
+        # nets the host to exactly where it started.
+        rc, tail = _sh(f"sudo -n rm -rf {shlex.quote(self.wr)}", timeout=30)
+        return rc == 0, tail
+
+    def residue(self):
+        # Our footprint is exactly the workroot dir; existence-stat needs only a
+        # traversable /run (0755), no privilege. Scoped to our own uniquely-named
+        # path, immune to unrelated churn under /run.
+        return [self.wr] if os.path.exists(self.wr) else []
+
+
 # --- the ladder ----------------------------------------------------------------
 # A rung is (name, strength, host-prereq probe, factory). The resolver tries them
 # in order and binds the first whose prereq passes. Order is illustrative; adding
