@@ -221,6 +221,72 @@ class DindSubstrate(Substrate):
         return [l for l in out.splitlines() if l.strip()] if rc == 0 else []
 
 
+class K3sSubstrate(Substrate):
+    """A rung that runs the workload in a throwaway namespace on an existing k3s (or
+    any kubectl-reachable) cluster. Authored just-in-time against the same contract
+    dind satisfies -- the first proof that a new rung is generated to match an
+    operator's reality (a standing cluster), not picked from a pre-built menu.
+
+    Honest strength, and the finding authoring it surfaced: this is NOT dind's
+    host-safe 'environmental' guarantee. The WORKLOAD runs off-host in the cluster,
+    but the deploy DRIVER (kubectl) runs on the host, so a deploy STEP here executes
+    host-side -- a malicious config could touch host state through a k3s profile's
+    steps, which dind forbids by construction. So its strength is 'cluster' (the
+    workload is isolated in a real cluster namespace), distinct from 'environmental'
+    (the whole deploy is host-safe). Full host-safety on k3s needs the deploy driver
+    to run in-cluster too (a bringup pod); that is the stronger follow-up.
+
+    Isolation is the namespace; teardown deletes it; residue is a leftover namespace.
+    Non-destructive to the cluster by construction: it only ever touches its own
+    uniquely-named namespace, never the operator's existing ones."""
+
+    name = "k3s"
+    strength = "cluster"
+
+    def __init__(self, app="app"):
+        self.ns = f"hoist-sbx-{app}-{uuid.uuid4().hex[:8]}"
+        self.provisioned = False
+
+    def workroot(self):
+        # kubectl needs a cwd but does not use it; the namespace is the isolation.
+        return "/tmp"
+
+    def provision(self):
+        rc, tail = _sh(f"kubectl create namespace {self.ns}", timeout=60)
+        if rc != 0:
+            return False, f"could not create namespace {self.ns}: {tail}"
+        self.provisioned = True
+        return True, self.ns
+
+    def exec(self, cmd, cwd, env_overrides, timeout):
+        # Run on the host with the namespace injected; a k3s profile's steps are
+        # kubectl commands that reference $HOIST_NS and act only within it.
+        env = dict(os.environ)
+        env["HOIST_NS"] = self.ns
+        env.update({k: str(v) for k, v in (env_overrides or {}).items()})
+        try:
+            p = subprocess.run(cmd, shell=True, cwd=cwd, timeout=timeout,
+                             capture_output=True, text=True, env=env)
+            out = (p.stdout or "") + (p.stderr or "")
+            return p.returncode, out.strip()[-2000:]
+        except subprocess.TimeoutExpired:
+            return 124, f"timed out after {timeout}s"
+        except Exception as e:  # noqa: BLE001
+            return 127, f"could not run: {e}"
+
+    def teardown(self):
+        if not self.provisioned:
+            return True, ""
+        rc, tail = _sh(f"kubectl delete namespace {self.ns} --wait=true --timeout=90s",
+                      timeout=120)
+        return rc == 0, tail
+
+    def residue(self):
+        rc, out = _sh(f"kubectl get namespace {self.ns} --no-headers --ignore-not-found",
+                     timeout=30)
+        return [self.ns] if (rc == 0 and out.strip()) else []
+
+
 # --- the ladder ----------------------------------------------------------------
 # A rung is (name, strength, host-prereq probe, factory). The resolver tries them
 # in order and binds the first whose prereq passes. Order is illustrative; adding
