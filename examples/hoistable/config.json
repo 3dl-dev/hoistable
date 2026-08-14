@@ -40,6 +40,10 @@
         {
           "check": "python3 tests/test_translate.py",
           "name": "test_translate"
+        },
+        {
+          "check": "python3 tests/test_builder.py",
+          "name": "test_builder"
         }
       ],
       "bringup": [

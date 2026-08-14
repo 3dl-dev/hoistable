@@ -122,6 +122,10 @@ you measured.
         {
           "check": "python3 tests/test_translate.py",
           "name": "test_translate"
+        },
+        {
+          "check": "python3 tests/test_builder.py",
+          "name": "test_builder"
         }
       ],
       "bringup": [
@@ -169,3 +173,4 @@ you measured.
 - `test_hoist`: `python3 tests/test_hoist.py`
 - `test_petard`: `python3 tests/test_petard.py`
 - `test_translate`: `python3 tests/test_translate.py`
+- `test_builder`: `python3 tests/test_builder.py`
