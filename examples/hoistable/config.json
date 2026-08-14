@@ -18,20 +18,16 @@
     "default": {
       "acceptance": [
         {
-          "check": "python3 tests/test_author.py",
-          "name": "test_author"
+          "name": "test_builder",
+          "check": "python3 tests/test_builder.py"
         },
         {
-          "check": "python3 tests/test_envelope.py",
-          "name": "test_envelope"
+          "name": "test_honcho_spec",
+          "check": "python3 tests/test_honcho_spec.py"
         },
         {
-          "check": "python3 tests/test_hoist.py",
-          "name": "test_hoist"
-        },
-        {
-          "check": "python3 tests/test_builder.py",
-          "name": "test_builder"
+          "name": "test_develop",
+          "check": "python3 tests/test_develop.py"
         }
       ],
       "bringup": [
