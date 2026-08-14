@@ -1,66 +1,80 @@
 # This skill sets <app> up before it reports <app> is up
 
-You are about to bring **<app>** up from a *recipe*, not from a finished instance. The
-skill ships <app> as source: a carried recipe plus the pin to the code that runs it, like
-a self-extracting archive that carries both its contents and the unpacker. Before you tell
-anyone <app> is running, <verb> it against **this** target and GRADE it honestly. You do
-the work in-loop; nobody runs a command line. The material is the carried recipe, the
-binds, the checks, and the acceptance in the sections below.
+You are about to bring **<app>** up from a *recipe*, not from a finished instance. This
+skill carries <app> as source: the recipe below (its binds, isolation, bringup, health,
+and acceptance) is everything you need. You do the work **here, in this session, on this
+target**, with ordinary tools you already have (git, the container runtime, a shell). You
+fetch and run no toolchain and no program of anyone else's: the discipline below is yours
+to follow, in context. Nobody runs a command line; you are the one who hoists <app>.
 
 Two roles run through this. The **author** packaged <app> as this skill on their machine.
-The **receiver** is whoever installs it, a different target, whose substrate, secrets, and
-paths you resolve here. You work so the receiver reaches a real, graded <app>, or an honest
-reason it could not, never a silent success.
+The **receiver** is you, on a different target, whose substrate, secrets, and paths you
+resolve here. Work so the receiver reaches a real, graded <app>, or an honest reason it
+could not, never a silent success.
 
-## Recipe (run before your first report that <app> is up)
+Before you tell anyone <app> is up, <verb> it against **this** target and GRADE it
+honestly. The carried recipe below is the authority; the steps here are how you run it.
 
-1. **Cache / idempotency.** If <app> is already up on this target in this session (a prior
-   graded namespace exists, or a resolution is recorded here), reuse it, emit the Reusing
-   line, and skip to step 6. Do not re-deploy over a live instance.
+## The honest-grade discipline (run in this order; the order is the guarantee)
 
-2. **Resolve the binds.** For each entry in the binds section, probe this target for the
-   matching capability, and resolve the isolation substrate to the required strength the
-   carried recipe names. If a *required* bind has no match here, or no substrate meets the
-   required strength, STOP, deploy nothing, and report cannot-build naming the missing one.
-   Never guess and never substitute. If you cannot positively confirm a required bind,
-   treat it as missing.
+1. **Reuse if already up.** If <app> is already up on this target in this session, reuse
+   it, say so, and skip to the report. Never redeploy over a live instance.
 
-3. **Self-extract the runtime (the bootstrap).** The carried recipe carries a pin under
-   `operators` (`version`, `url`, `sha256`), but the code that runs the deploy lives
-   *inside* that kit, so you unpack it yourself first, and only after verifying it. Do
-   exactly this: (a) fetch the tarball at the pin `url`; (b) compute its sha256 and confirm
-   it equals the pin's `sha256`, if it does not, STOP and report cannot-build (tampered or
-   wrong kit), and never unpack or run an unverified tarball; (c) extract the verified
-   tarball, that unpack IS the self-extraction, and it yields the runtime: `hoist/pins.py`
-   (fetch and verify), `envelope/` (the enforced grader: isolation, honest grade,
-   teardown), and the operator steps. From here the extracted runtime drives the graded
-   pass and re-verifies the kit into its cache. Because you checked the sha256 by hand
-   before unpacking, nothing unverified executes.
+2. **Binds gate (can this host even do the hoist).** For each bind in the recipe, run its
+   probe on the host. A missing *required* bind is **cannot-build**: name it and stop,
+   deploying nothing. Do not guess and do not substitute; if you cannot positively confirm
+   a required bind, treat it as missing.
 
-4. **Know early, then deploy.** Run the pre-check first, it deploys nothing. If it says
-   cannot-build, stop at the door and give the user the named reason. Otherwise run the
-   full graded pass through the extracted grader, which *enforces* the invariants: a
-   runner-owned isolated namespace (non-destructive), and teardown. You never re-run
-   <app>'s own singular deployment onto a live host.
+3. **Resolve the isolation (a deploy must never touch host state).** A profile that
+   deploys MUST be isolated. Resolve this against the target, do not assume it:
+   - If the recipe requires an **environmental** substrate (a sandbox a deploy cannot
+     escape, docker-in-docker for example), stand up the strongest one the target offers
+     and run every following step *inside* it; the sandbox is the isolation boundary. If
+     the target offers nothing that meets the required strength, stop: **cannot-build**,
+     name the strength that was missing.
+   - Otherwise use the recipe's own **namespace** on the host floor: a fixed project name,
+     OS-chosen free ports (never a hardcoded port that could already be taken), named
+     volumes, so the deploy cannot collide with or reach anything else. If the recipe
+     gives a collision probe, run it first; a dirty namespace is cannot-build.
+   - A deploying profile that declares no isolation at all is refused. Do not run it.
 
-5. **Grade.** The acceptance checks rebuild on THIS target. Compute the honest transfer
-   score, how many of the acceptance checks passed, N of M, and name every check that did
-   not transfer.
+4. **Preflight (know early; deploy nothing).** Clone the source (into the sandbox if you
+   stood one up), then run the recipe's preflight probes. A required preflight blocker is
+   **cannot-build**: name it and stop at the door, before anything deploys.
 
-6. **Report** the outcome in one line, using one of the templates below. Never let a design
-   read as a running system; if it did not transfer, say what did not.
+5. **Deploy (the install gate).** Run the recipe's bringup steps, inside the isolated
+   namespace or sandbox, with the free ports and namespace set. This is the only place
+   <app> is stood up, and only here, never onto a live host.
 
-7. **Hand off.** Point the user at any follow-up the carried recipe includes (how to
-   extend it, operate it, or keep it running), so they can use <app>, not merely have it
-   installed.
+6. **Health, then acceptance (the honest transfer score).** Run the recipe's health checks
+   and count how many of M pass. Only if the install gate is fully up, run the recipe's
+   held-back **acceptance** checks. Their pass fraction, N of M, is the honest transfer
+   score: whether <app> really *works* here, not merely that it came up. Name every check
+   that did not transfer.
 
-Before your first report, state in one line what happened, only one line, and do not
-narrate the loop, using one of these templates:
+7. **Always tear down, then verify no residue.** Run the recipe's teardown; if you stood
+   up an environmental sandbox, destroy it. Then confirm your footprint left nothing behind
+   on the host: the sandbox's resources are gone, the host-floor namespace is reclaimed. A
+   deploy that changed state outside its namespace is a blast-radius violation; report it.
+
+8. **Report one honest line** (templates below). Never let a design read as a running
+   system; if something did not transfer, say what.
+
+9. **Hand off.** Point the user at how to use, operate, or keep <app> running (per the
+   recipe's follow-ups), so they can *exploit* <app>, not merely have it installed.
+
+The outcome is exactly one of:
+- **built**, the install gate came up AND every acceptance check passed.
+- **honest-failure**, it came up but something did not transfer; say what.
+- **cannot-build**, a required bind, a preflight blocker, or the isolation strength is
+  missing; name it.
+
+State it in one line, only one, and do not narrate the loop:
 - "Built <app>. Acceptance transferred N of M on this target. Ready."
 - "Built <app>, but N of M acceptance checks did not transfer here: [the specific checks]."
-- "Cannot build <app>: this target is missing [the named bind or substrate strength]."
+- "Cannot build <app>: this target is missing [the named bind or isolation strength]."
 - "Reusing the <app> setup from earlier this session. Ready."
 
 The failure to avoid: reporting <app> is up because the recipe *looks* right. It is up only
-when it deployed and its acceptance transferred on this target. Grade it, then report what
+when it deployed and its acceptance transferred on THIS target. Grade it, then report what
 you measured.

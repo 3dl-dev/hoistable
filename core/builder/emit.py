@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
-"""Emit an app's Layer 2 recipe as ONE self-building distributable hoist SKILL.
+"""Assemble an app's Layer 2 recipe into ONE self-contained distributable hoist SKILL.
 
-This is use-case 1 (the skill builder) in code the builder skill composes: it takes an
-app's config (its Layer 2 recipe) plus the operators pin and assembles a single
-`<app>.hoist.SKILL.md`, the same carried recipe a bundle tarball carries, but wrapped
-as a *skill* an agent invokes (agent-first), with the receiver-side hoist recipe stamped
-verbatim at the top. On first use a receiver agent follows that stamped recipe:
-self-extract the pinned harness, resolve the substrate, deploy through the neutral-core
-grader, and report an honest transfer score. The channel is the skill; nobody runs a CLI.
+This is use-case 1 (the skill builder): it takes an app's config (its Layer 2 recipe) and
+assembles a single `<app>.hoist.SKILL.md`, the carried recipe wrapped as a *skill* an
+agent invokes (agent-first), with the honest-grade discipline stamped in as prose. On
+first use the receiver agent follows that recipe **in its own session, with ordinary
+tools**: resolve the isolation, clone, deploy in a sandbox, health, held-back acceptance,
+tear down, and report an honest transfer score. There is nothing of ours to fetch or run,
+no toolchain, no CLI, no shipped runtime. The channel is the skill; the agent does the
+work in-context.
 
-This module is the neutral core: it only *assembles* the file, deterministically, so the
-same recipe always yields byte-identical output (a skillc-style reproducible artifact).
-The judgment, which config, what the acceptance means, carry vs bind, is the builder
-skill's (see builder/SKILL.md), not this script's.
+This module only *assembles* the file. The judgment, which config, what the acceptance
+means, carry vs bind, is the builder skill's (see builder/SKILL.md), not this script's.
+Assembly is deterministic (same recipe -> same bytes). Whether even this assembly stays
+Python or becomes the build agent's own authoring is an open question (see the reshape
+items); it survives here only as build-time convenience, never as anything a receiver runs.
 
 The carried recipe travels inside the file in a fenced ```json block; `extract_config`
-recovers it, so the skill is genuinely self-extracting: the config never lives outside
-the one file. Standard library only.
+recovers it, so the config never lives outside the one file. Standard library only.
 """
 
 import argparse
@@ -28,19 +29,20 @@ import sys
 _HERE = os.path.dirname(os.path.abspath(__file__))
 SEED = os.path.join(_HERE, "seed", "hoist-rebuild.md")
 
-CARRIED_HEADER = "## The carried recipe (the authority; the operators pin travels with it)"
+CARRIED_HEADER = "## The carried recipe (the authority; everything the hoist needs travels here)"
 _FENCE = "```"
 
 # Invariants every emitted skill obeys, independent of the app. Static: they are the
-# grader's enforced guarantees, restated for the receiver agent.
+# honest-grade discipline the receiver agent follows, restated as guarantees.
 CHECKS = [
-    "**Non-destructive.** The deploy lands in a runner-owned isolated namespace (its own "
+    "**Non-destructive.** The deploy lands in an isolated namespace or sandbox (its own "
     "name, ports, storage); a profile that declares no isolation is refused; teardown "
-    "always runs. It never re-runs <app>'s own singular deployment onto a live host.",
+    "always runs and leaves no residue on the host. It never re-runs <app>'s own "
+    "singular deployment onto a live host.",
     "**No silent success.** <app> is graded on the real target; a run that cannot say it "
     "worked says what did not transfer. A design never reads as a running system.",
-    "**Verified runtime.** The fetched kit is run only after its sha256 matches the "
-    "carried pin; a tampered or unreachable kit is cannot-build, named.",
+    "**No toolchain, no command line.** You hoist <app> in this session with ordinary "
+    "tools; there is nothing of ours to fetch or run. The carried recipe is everything.",
 ]
 
 
@@ -99,8 +101,9 @@ def _acceptance_section(profile):
 def _default_description(app):
     """The app-first default, carrying none of our naming."""
     return (f"Set up and run {app} on this machine, then self-test it and report "
-            f"honestly what worked. It ships as a recipe, and on first use it fetches a "
-            f"verified toolchain, brings {app} up in a sandbox, and grades it.")
+            f"honestly what worked. It ships as a recipe your agent follows here, in "
+            f"this session: it brings {app} up in a sandbox, grades it, and tears it "
+            f"down clean.")
 
 
 def emit_skill(app_dir_or_config, pin=None, seed_path=SEED, config_name="config.json",
@@ -121,8 +124,10 @@ def emit_skill(app_dir_or_config, pin=None, seed_path=SEED, config_name="config.
         path = os.path.join(path, config_name)
     with open(path) as f:
         config = json.load(f)
-    if pin:
-        config["operators"] = pin                       # pin, do not vendor
+    # No toolchain pin is injected: the emitted skill is self-contained prose. The
+    # receiver agent does the hoist in its own session with ordinary tools; there is
+    # nothing of ours to fetch or run. `pin` is accepted for caller compatibility and
+    # ignored (removed with the runtime-Python retirement).
     app = config.get("app", "app")
     _, profile = _default_profile(config)
     skill_name = skill_name or "deploy"                 # the dev's verb; never forced to ours
