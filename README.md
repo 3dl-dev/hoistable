@@ -1,5 +1,7 @@
 # Hoistable
 
+![hoistable: package a repo into a self-installing skill that verifies, deploys, and grades itself on any box](docs/hoistable-hero-anim.png)
+
 Hand your software to someone and have it actually run on their machine.
 
 Software works where you built it and breaks everywhere else. The config is different, a service is missing, a port is taken. Whoever installs it ends up fixing all that by hand. A prebuilt package doesn't help. It just hides the breakage until the thing is already running wrong.
