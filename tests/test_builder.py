@@ -3,11 +3,11 @@
 distributable hoist SKILL, and grade the whole stack. Stdlib only.
 
 Two layers:
-  - Emit shape (always, hermetic): the emitted file is one self-building skill — it
+  - Emit shape (always, hermetic): the emitted file is one self-building skill, it
     stamps the receiver-side hoist recipe verbatim, carries the app's recipe inlined and
     self-pinning, declares binds/checks/acceptance, and is deterministic. It is
     self-extracting: extract_config recovers the carried recipe from the one file.
-  - Whole-stack grade (ground-source, never skips — a hermetic app, so no docker): the
+  - Whole-stack grade (ground-source, never skips, a hermetic app, so no docker): the
     loss function over the ENTIRE stack. Build a real operator kit release, emit a skill
     that PINS it, LIFT the carried recipe out, and hoist it: the skill self-extracts the
     verified harness and the envelope self-grades on a clean target to BUILT with an
@@ -35,7 +35,7 @@ FAKE_PIN = {"version": "1.2.3", "url": "file:///nope.tgz", "sha256": "deadbeef"}
 
 def _toy_app_dir(name="toy"):
     """A hermetic toy app: isolation none, bringup writes a marker in its throwaway
-    target, acceptance checks it. No docker, no source clone — free to grade."""
+    target, acceptance checks it. No docker, no source clone, free to grade."""
     d = tempfile.mkdtemp(prefix=f"builder-{name}-")
     config = {
         "app": name,

@@ -7,14 +7,14 @@ description: Onboard an app as a running, graded system from its hoistable confi
 
 This skill ships as source: it carries the pin to the hoistable toolchain and the recipe
 to unpack it, like a self-extracting archive. Before you do anything else, self-extract
-the toolchain on this target — and only after verifying it.
+the toolchain on this target, and only after verifying it.
 
 1. Read the toolchain pin below (`version`, `url`, `sha256`).
 2. Fetch the tarball at `url`, compute its sha256, and confirm it equals the pin's
-   `sha256`. If it does not, STOP — never unpack or run an unverified toolchain.
+   `sha256`. If it does not, STOP, never unpack or run an unverified toolchain.
 3. Extract the verified tarball. It yields the neutral-core toolchain you *invoke*:
    `builder/emit.py` (the deterministic skill emitter), `release/build_release.py` (build
-   a harness kit to pin), and the harness itself — `envelope/` (the enforced grader:
+   a harness kit to pin), and the harness itself, `envelope/` (the enforced grader:
    isolation, honest grade, teardown), `hoist/` (discovery + pin resolution), and the
    `operators/`. None of this is a command a user runs; it is enforcement you call.
 
@@ -55,10 +55,10 @@ Either way you reach a deployed, graded system, or an honest reason you did not.
 Onboarding is driven, not a menu. You take the wheel; the user never sees a prompt with
 nothing to do:
 
-1. **Resolve the config** — discovery above. (The neutral core `hoist/hoist.py` carries
+1. **Resolve the config**: discovery above. (The neutral core `hoist/hoist.py` carries
    the local-path resolver; index and URL are its extension points. You call the core;
    you never leave that to the user.)
-2. **Know early.** Run preflight first, which deploys nothing — invoke the neutral-core
+2. **Know early.** Run preflight first, which deploys nothing, invoke the neutral-core
    grader in preflight-only mode (`envelope.py --until preflight`). If it says
    cannot-build, stop at the door and give the user the named reason.
 3. **Deploy and grade.** If feasible, run the full pass, invoking the neutral-core grader
@@ -80,7 +80,7 @@ nothing to do:
 ## The skill is the channel; the core enforces
 
 This `SKILL.md` is the hoist skill in its Claude Code form; the same method ports to
-other *agent* harnesses behind a thin adapter — the channel is a skill an agent runs,
+other *agent* harnesses behind a thin adapter, the channel is a skill an agent runs,
 never a command line. The neutral core is `envelope.py` plus `hoist.py` (standard
 library, no harness assumptions) and the config schema: the small code you call to
 *enforce* the invariants, not a driver a user runs.

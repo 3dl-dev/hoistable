@@ -8,8 +8,8 @@ Hoistable ships the recipe to stand your software up, not a finished build. You 
 
 ## Two things you do with it
 
-- **hoist** — take one of these recipes and get the software running, and graded, on your machine.
-- **hoistable** — turn your own software into one of these recipes, so other people can hoist it.
+- **hoist**: take one of these recipes and get the software running, and graded, on your machine.
+- **hoistable**: turn your own software into one of these recipes, so other people can hoist it.
 
 You make a recipe with `hoistable`. Other people run it with `hoist`.
 

@@ -3,7 +3,7 @@
 
 This is use-case 1 (the skill builder) in code the builder skill composes: it takes an
 app's config (its Layer 2 recipe) plus the operators pin and assembles a single
-`<app>.hoist.SKILL.md` — the same carried recipe a bundle tarball carries, but wrapped
+`<app>.hoist.SKILL.md`, the same carried recipe a bundle tarball carries, but wrapped
 as a *skill* an agent invokes (agent-first), with the receiver-side hoist recipe stamped
 verbatim at the top. On first use a receiver agent follows that stamped recipe:
 self-extract the pinned harness, resolve the substrate, deploy through the neutral-core
@@ -11,7 +11,7 @@ grader, and report an honest transfer score. The channel is the skill; nobody ru
 
 This module is the neutral core: it only *assembles* the file, deterministically, so the
 same recipe always yields byte-identical output (a skillc-style reproducible artifact).
-The judgment — which config, what the acceptance means, carry vs bind — is the builder
+The judgment, which config, what the acceptance means, carry vs bind, is the builder
 skill's (see builder/SKILL.md), not this script's.
 
 The carried recipe travels inside the file in a fenced ```json block; `extract_config`
@@ -75,11 +75,11 @@ def _binds_section(config, profile):
     lines = []
     for b in config.get("binds") or []:
         req = "required" if b.get("required") else "optional"
-        lines.append(f"- `{b['name']}` ({req}) — probe: `{b.get('probe', '')}`")
+        lines.append(f"- `{b['name']}` ({req}), probe: `{b.get('probe', '')}`")
     iso = profile.get("isolation") or {}
     require = iso.get("require")
     if iso.get("none"):
-        lines.append("- isolation substrate: none required — this profile is hermetic "
+        lines.append("- isolation substrate: none required, this profile is hermetic "
                      f"({iso.get('why', 'declares it touches no shared state')}).")
     elif require and require not in ("host", "namespace", None):
         lines.append(f"- isolation substrate (required): a rung of at least "
@@ -94,7 +94,7 @@ def _binds_section(config, profile):
 def _acceptance_section(profile):
     lines = [f"- `{c.get('name', '?')}`: `{c.get('check', '')}`"
              for c in (profile.get("acceptance") or [])]
-    return "\n".join(lines) or "- (none declared — the recipe transfers nothing to grade)"
+    return "\n".join(lines) or "- (none declared, the recipe transfers nothing to grade)"
 
 
 def emit_skill(app_dir_or_config, pin=None, seed_path=SEED, config_name="config.json"):
@@ -121,7 +121,7 @@ def emit_skill(app_dir_or_config, pin=None, seed_path=SEED, config_name="config.
     parts = [
         "---",
         f"name: hoist-{app}",
-        (f"description: Hoist {app} onto your target — on first use, self-extract the "
+        (f"description: Hoist {app} onto your target, on first use, self-extract the "
          f"hoistable harness and clone, configure, deploy, and grade {app}, reporting an "
          f"honest transfer score. Agent-first; no commands."),
         "---",

@@ -16,7 +16,7 @@ frozen truth.
 
     python3 -m unittest discover -s tests -p "test_*.py"    # last run: 40 passed
 
-These are **builder** checks — you invoking the neutral core to grade it. They are not
+These are **builder** checks, you invoking the neutral core to grade it. They are not
 the product surface: agent-first, users invoke the hoist *skill*, never a `.py`.
 
 End-to-end proofs, all re-runnable (see git history for the exact demo commands):

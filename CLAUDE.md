@@ -1,10 +1,10 @@
-# CLAUDE.md — Hoistable (project standing orders)
+# CLAUDE.md, Hoistable (project standing orders)
 
 Hoistable ships software as a recipe that hoists itself, **agent-first**: the
 distribution channel is *skills*, not commands. `hoist` is a skill an agent invokes,
 and every product Hoistable wraps becomes its own distributable skill. Hoistable is
 both the **skill builder** (it turns an app into a distributable skill) and the
-**framework** that skill carries — develop / preflight / sysop / petard — so the user
+**framework** that skill carries, develop / preflight / sysop / petard, so the user
 can fully *exploit* the distributed software, not merely install it. Nobody ever reaches
 for `hoist.py`; the Python is neutral-core enforcement behind the skill. The **product**
 is described in `README.md` (thesis + three layers), `docs/operator-model.md`
@@ -19,45 +19,45 @@ not need steering; the shape is fundamental, not stylistic.
 
 ## The fundamental shape
 
-0. **Agent-first — the skill is the product; the CLI is not.** The distribution channel
-   is *skills*, consumed by agents. Nobody runs `hoist.py`, ever — an agent invokes the
+0. **Agent-first, the skill is the product; the CLI is not.** The distribution channel
+   is *skills*, consumed by agents. Nobody runs `hoist.py`, ever, an agent invokes the
    *hoist skill*, and every product Hoistable wraps becomes its own distributable skill
    (that is the channel: a skill builder whose output is a skill). The stdlib Python
    (`envelope.py`, `hoist.py`, the operators' helpers) is neutral-core *enforcement* the
    skill's agent calls, never a user-facing command line. When you catch yourself
    "proving" the product by running a `.py` at a shell, you are testing the core as a
-   *builder* — legitimate for grading, but not the product surface; the product is the
+   *builder*, legitimate for grading, but not the product surface; the product is the
    skill an agent invokes. Hoistable is two things: the **skill builder** (an app → its
    own distributable skill) and the **operator framework** (develop / preflight / sysop /
    petard) delivered *through* that skill so users can fully exploit the software, not
    merely install it. The three usage modes are in `docs/operator-model.md`.
 
-   **The builder nests — do not flatten it.** The builder's output is itself a
+   **The builder nests, do not flatten it.** The builder's output is itself a
    *self-building* skill: on first use a receiver agent self-extracts a verified harness
    from the pin, then hoists and grades the app. So the thing under test is never just
-   "did the app deploy" — it is the whole tower (emit → self-extract → clone → deploy →
+   "did the app deploy", it is the whole tower (emit → self-extract → clone → deploy →
    grade), and the honest grade extends over that whole stack. Hoistable ships *itself*
    the same way (it emits its own hoist skill; it is its own first consumer), and the
    tower is recursive: a hoisted hoistable can emit the next app's skill. The constant
-   drift after a reset is to collapse this into a first-order app-deploy tool — it is a
+   drift after a reset is to collapse this into a first-order app-deploy tool, it is a
    skill *builder* (nested, recursive), delivered agent-first.
 
 1. **You are the operator.** develop / preflight / sysop / petard are agent *roles*,
    not programs. When you deploy, you *are* sysop; when you extend, you *are* develop.
    There is no separate automation to build that replaces you: an operator running a
    loop by hand and a dispatched agent running the same loop are the *same act*
-   (build-rule 1 — the generator is an agent following a spec, not a script). So
+   (build-rule 1, the generator is an agent following a spec, not a script). So
    "manual vs automated" is never a real distinction here. If you find yourself asking
    "how do I automate this loop," the answer is: put the loop in a skill and let an
    agent run it, doing the messy inference in-loop. And the roles are **meta-skills**:
-   each composes expertise — skills and best practices you author *or pull from the
-   public sphere* — to be a domain expert (develop = dev, preflight = deployment-planning,
+   each composes expertise, skills and best practices you author *or pull from the
+   public sphere*, to be a domain expert (develop = dev, preflight = deployment-planning,
    sysop = ops, petard = backup/continuity). Expertise is *resolved in*, never a hardcoded
    menu of the skills "we support." (Full model: `docs/operator-model.md`.)
 
 2. **Resolve, don't depend. Author just-in-time, don't pre-build.** A requirement
    resolves against what the target *actually offers*, re-derived by probing every
-   time. A missing piece — a substrate rung, a deploy profile, an adapter — is
+   time. A missing piece, a substrate rung, a deploy profile, an adapter, is
    *authored in-loop* when an operator's problem needs it, not enumerated ahead of
    time. Any checked-in registry or ladder is a **cache** of already-authored things,
    never a menu of what is possible. Interrogate the target; do not try to pre-mint
@@ -66,7 +66,7 @@ not need steering; the shape is fundamental, not stylistic.
 3. **Anti-constrain.** Don't box in what doesn't need boxing. No hardcoded backend, no
    fixed taxonomy, no closed menu, no "which of these N environments are you." A fixed
    enum of backends/rungs/environments is the smell. Keep it generic and resolved. This
-   is what **build-time** does — it *narrows* the huge universe of options a naive agent
+   is what **build-time** does, it *narrows* the huge universe of options a naive agent
    and user must swim through to a small, sane, still-resolved-and-overridable set (a
    nudge, not a lane). **Narrow ≠ fix:** narrowing shrinks the search space while keeping
    every choice resolved at the *user's* runtime; fixing bakes one choice into the
@@ -74,14 +74,13 @@ not need steering; the shape is fundamental, not stylistic.
    app's substrate into its config). A shipped recipe that names one backend where the
    target could resolve several is a fix, not a narrow.
 
-4. **Honest, always — no silent success, no silent spend.** State plainly what is built
+4. **Honest, always, no silent success, no silent spend.** State plainly what is built
    *and tested* versus *designed*; never let a design read as a capability. Grade
    against reality (a real workload on a real target), never a mock of the thing under
    test. Surface cost; a paid action is transparent and gated proportionally to its
-   magnitude, never silent. A weaker-but-honest result beats a stronger-sounding claim
-   — label a rung with the guarantee it *earned*, not the one you wanted.
+   magnitude, never silent. A weaker-but-honest result beats a stronger-sounding claim. Label a rung with the guarantee it *earned*, not the one you wanted.
 
-5. **Re-derive, don't freeze.** The environment, the manifest, the resolution — probed
+5. **Re-derive, don't freeze.** The environment, the manifest, the resolution, probed
    every run, never remembered as a standing fact. (The global continuation-identity
    rule; it bites hardest on infrastructure. A saved resolution is a replayable recipe,
    re-validated on replay, not a stored truth.)
@@ -89,12 +88,12 @@ not need steering; the shape is fundamental, not stylistic.
 6. **The neutral core is small code that enforces invariants; the judgment is you.**
    Stdlib Python enforces the non-negotiable order (preflight-before-deploy,
    always-teardown, grade-honestly, verify-residue). Discovery, authoring,
-   matching-need-to-solution, filling the long tail — that is the agent. Watch for the
+   matching-need-to-solution, filling the long tail, that is the agent. Watch for the
    core accreting orchestration or policy that belongs to the agent: if `hoist.py` or an
    operator's code starts making judgments, that judgment belongs in the skill, not the
    script.
 
-7. **Hoistable depends on nothing of ours.** `rd`, this harness, a particular model —
+7. **Hoistable depends on nothing of ours.** `rd`, this harness, a particular model,
    these are how *we* build Hoistable, not things it ships or requires. Product-level
    coordination is the resolution store + recipe references, not our tooling.
 
@@ -112,14 +111,14 @@ not need steering; the shape is fundamental, not stylistic.
   running a `.py` at a shell → stop: nobody reaches for commands, the channel is skills,
   agent-first. The Python is neutral-core enforcement *behind* the skill; the skill an
   agent invokes is the interface. (This is the drift that keeps happening after a
-  context reset — re-read principle 0.)
+  context reset, re-read principle 0.)
 - Labeling a rung or result with a strength/guarantee it did not earn → stop:
   honest-weaker beats dishonest-strong. Grade it, then label what you measured, and do
   not wire an unearned rung into the resolvable set.
-- Flattening the project to a first-order app-deploy tool — forgetting the builder nests
+- Flattening the project to a first-order app-deploy tool, forgetting the builder nests
   and the operators are meta-skills → stop: it is a skill *builder* whose output is a
   self-building skill, delivered agent-first; the grade spans the whole tower, not one
-  app's deploy. (The drift that keeps recurring after a context reset — re-read
+  app's deploy. (The drift that keeps recurring after a context reset, re-read
   principle 0.)
 - Grading by running the Python spine (`hoist.hoist`) and calling it the product → that
   is a builder-side *spine* grade; the product is a receiver *agent* following the
@@ -132,8 +131,8 @@ not need steering; the shape is fundamental, not stylistic.
 - Standard `rd` workflow (see the global CLAUDE.md). Track decisions and findings as
   items; the strength-model and cost-spine decisions are open (see `rd ready`).
 - **Ground-source testing.** A rung, a loop, a bundle is not done until a test grades
-  it against reality — real dind, a real cluster, a real sandbox — not a mock of the
+  it against reality, real dind, a real cluster, a real sandbox, not a mock of the
   thing under test. Substrate tests are gated on the mechanism being present and assert
   the honest cannot-build path when it is absent; they never skip.
 - Full suite: `for t in tests/test_*.py; do python3 "$t"; done` (the dind / k3s /
-  systemd tests each take 15–70s of real infra time).
+  systemd tests each take 15-70s of real infra time).

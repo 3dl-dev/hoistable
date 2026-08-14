@@ -75,7 +75,7 @@ resolves the strongest rung the target actually offers.
   as a false violation.
 
 If an environmental rung is required and none resolves on the target, that is a
-`cannot-build`, named at the door — an unresolved bind, not a crash. See
+`cannot-build`, named at the door, an unresolved bind, not a crash. See
 `substrate.py`; a new rung is a new adapter there, never a fork of the grader
 (build-rule 2), and the knowledge of how to drive it lives in the adapter, not here
 (build-rule 6, point don't embed).

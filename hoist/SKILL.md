@@ -25,10 +25,10 @@ Either way you reach a deployed, graded system, or an honest reason you did not.
 Onboarding is driven, not a menu. You take the wheel; the user never sees a prompt with
 nothing to do:
 
-1. **Resolve the config** — discovery above. (The neutral core `hoist/hoist.py` carries
+1. **Resolve the config**: discovery above. (The neutral core `hoist/hoist.py` carries
    the local-path resolver; index and URL are its extension points. You call the core;
    you never leave that to the user.)
-2. **Know early.** Run preflight first, which deploys nothing — invoke the neutral-core
+2. **Know early.** Run preflight first, which deploys nothing, invoke the neutral-core
    grader in preflight-only mode (`envelope.py --until preflight`). If it says
    cannot-build, stop at the door and give the user the named reason.
 3. **Deploy and grade.** If feasible, run the full pass, invoking the neutral-core grader
@@ -50,7 +50,7 @@ nothing to do:
 ## The skill is the channel; the core enforces
 
 This `SKILL.md` is the hoist skill in its Claude Code form; the same method ports to
-other *agent* harnesses behind a thin adapter — the channel is a skill an agent runs,
+other *agent* harnesses behind a thin adapter, the channel is a skill an agent runs,
 never a command line. The neutral core is `envelope.py` plus `hoist.py` (standard
 library, no harness assumptions) and the config schema: the small code you call to
 *enforce* the invariants, not a driver a user runs.
