@@ -66,7 +66,7 @@
   .bar .who{margin-left:.6cqw;font-size:1.15cqw;color:var(--teal-dim);letter-spacing:.02em}
   .bar .stat{margin-left:auto;font-size:1.05cqw;color:#4d6864}
 
-  .body{padding:1.7cqw 2cqw 1.8cqw; font-size:1.36cqw; line-height:1.48}
+  .body{padding:2cqw 2cqw 2cqw; font-size:1.5cqw; line-height:1.5}
   .q{color:var(--cream); margin-top:1.35cqw}
   .q:first-child{margin-top:0}
   .q .p{color:var(--teal); margin-right:.7cqw}
@@ -79,7 +79,9 @@
   .ok{color:var(--ok)}
   .warn{color:var(--warn)}
   .sha{color:var(--cream)}
-  .report{color:var(--cream); margin-top:.5cqw}
+  .win{color:var(--cream); margin-top:1.35cqw; font-weight:500}
+  .win .m{color:var(--ok); margin-right:.7cqw; font-weight:400}
+  .win .url{color:var(--teal-bright)}
   .cur{
     display:inline-block;width:.95cqw;height:1.55cqw;vertical-align:-.25cqw;
     background:var(--teal);margin-left:.4cqw;
@@ -109,27 +111,21 @@
           <div class="bar">
             <span class="led"></span><span class="led"></span><span class="led on"></span>
             <span class="who">hoistable · your session</span>
-            <span class="stat">~/apps/honcho</span>
+            <span class="stat">~/src/myapp</span>
           </div>
           <div class="body">
-            <div class="q"><span class="p">&gt;</span>here's honcho.SKILL.md, set it up</div>
+            <div class="q"><span class="p">&gt;</span>get my app running on this box</div>
 
-            <div class="call"><span class="m">⏺</span><span class="fn">Bash</span><span class="arg">(curl -sL …/operators-0.7.0.tgz | sha256sum)</span></div>
-            <div class="res"><span class="b">⎿</span><span class="sha">8b1c4b72…</span> matches pin <span class="ok">✔</span></div>
+            <div class="call"><span class="m">⏺</span>Resolve for this machine</div>
+            <div class="res"><span class="b">⎿</span>needs postgres + a proxy, neither installed here</div>
 
-            <div class="call"><span class="m">⏺</span><span class="fn">Bash</span><span class="arg">(tar xzf operators-0.7.0.tgz)</span></div>
-            <div class="res"><span class="b">⎿</span>hoist/&nbsp; envelope/&nbsp; operators/</div>
+            <div class="call"><span class="m">⏺</span>Bring them up, isolated</div>
+            <div class="res"><span class="b">⎿</span>postgres <span class="ok">✔</span> &nbsp; caddy <span class="ok">✔</span></div>
 
-            <div class="call"><span class="m">⏺</span>Probe substrate</div>
-            <div class="res"><span class="b">⎿</span>dind present · environmental</div>
+            <div class="call"><span class="m">⏺</span>Deploy from source, then verify</div>
+            <div class="res"><span class="b">⎿</span>build <span class="ok">✔</span> &nbsp; migrate <span class="ok">✔</span> &nbsp; health <span class="ok">5/5 ✔</span></div>
 
-            <div class="call"><span class="m">⏺</span>Pre-check <span class="arg">(deploys nothing)</span></div>
-            <div class="res"><span class="b">⎿</span>buildable <span class="ok">✔</span></div>
-
-            <div class="call"><span class="m">⏺</span>Deploy honcho · isolated namespace · graded</div>
-            <div class="res"><span class="b">⎿</span>preflight <span class="ok">✔</span> · up <span class="ok">✔</span> · acceptance <span class="ok">3/3</span> · teardown <span class="ok">✔</span></div>
-
-            <div class="call" style="margin-top:1.1cqw"><span class="m">⏺</span>Built honcho. Transferred 3/3. Host clean.<span class="cur"></span></div>
+            <div class="win"><span class="m">⏺</span>Live at <span class="url">https://localhost:8443</span>, ready to use<span class="cur"></span></div>
           </div>
         </div>
       </div>
