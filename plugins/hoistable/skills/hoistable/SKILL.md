@@ -1,6 +1,6 @@
 ---
 name: hoistable
-description: Make an app hoistable — the /hoistable verb, use case 1 (the skill builder), distinct from /hoist. Use when a developer wants to ship their app so anyone's agent can later hoist it. /hoistable emits one <app>.hoist.SKILL.md that, on first use, self-extracts the hoistable harness and clones, configures, deploys, and grades the app on the receiver's target, reporting an honest transfer score. Agent-first; the output is a skill, never a command.
+description: The /hoistable verb (use case 1, the builder). Make your app hoistable — emit a self-building app.hoist.SKILL.md that self-extracts the harness and hoists then grades the app on any target. Agent-first; the output is a skill, not a command.
 ---
 
 ## Get the hoistable toolchain (self-extract, once)
