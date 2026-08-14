@@ -1,0 +1,22 @@
+{
+  "name": "hoistable",
+  "owner": {
+    "name": "Chris Baron",
+    "email": "baron@3dl.dev"
+  },
+  "description": "Self-hoisting software as skills: install a skill and your agent brings the app up on your own target, graded honestly. Agent-first — no commands. Includes hoistable itself.",
+  "plugins": [
+    {
+      "name": "hoistable",
+      "source": "./plugins/hoistable",
+      "description": "Hoistable itself, shipped as a self-building hoist skill: on first use your agent self-extracts the verified harness and hoists the hoistable framework onto your target, graded. The marketplace includes itself.",
+      "version": "0.4.0"
+    },
+    {
+      "name": "honcho",
+      "source": "./plugins/honcho",
+      "description": "Honcho, shipped as a self-building hoist skill: your agent self-extracts the harness, resolves an isolation substrate, and deploys + grades honcho on your target with an honest transfer score.",
+      "version": "0.4.0"
+    }
+  ]
+}
