@@ -73,7 +73,14 @@ class EmitShape(unittest.TestCase):
         text = emit.emit_skill(app_dir, FAKE_PIN, skill_name="up",
                               description="Bring toy up on your box.")
         self.assertTrue(text.startswith("---\nname: up\n"))
-        self.assertIn("description: Bring toy up on your box.", text)
+        self.assertIn("Bring toy up on your box.", text)
+
+    def test_description_with_a_colon_stays_valid_frontmatter(self):
+        # a ': ' in a description must not break YAML; it is quoted, not left raw.
+        app_dir, _ = _toy_app_dir("toy")
+        text = emit.emit_skill(app_dir, FAKE_PIN, description="Deploy toy: fast and safe.")
+        line = [l for l in text.splitlines() if l.startswith("description:")][0]
+        self.assertEqual(line, 'description: "Deploy toy: fast and safe."')
 
     def test_scaffold_marketplace_is_self_host_ready_and_unbranded(self):
         app_dir, _ = _toy_app_dir("toy")

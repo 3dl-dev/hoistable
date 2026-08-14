@@ -100,7 +100,7 @@ def _acceptance_section(profile):
 def _default_description(app):
     """The app-first default, carrying none of our naming."""
     return (f"Set up and run {app} on this machine, then self-test it and report "
-            f"honestly what worked. Ships as a recipe: on first use it fetches a "
+            f"honestly what worked. It ships as a recipe, and on first use it fetches a "
             f"verified toolchain, brings {app} up in a sandbox, and grades it.")
 
 
@@ -138,7 +138,9 @@ def emit_skill(app_dir_or_config, pin=None, seed_path=SEED, config_name="config.
     parts = [
         "---",
         f"name: {skill_name}",
-        f"description: {description}",
+        # quote the description so any colon in it is YAML-safe (an unquoted ": " breaks
+        # the frontmatter and the skill silently fails to load); json.dumps is valid YAML.
+        f"description: {json.dumps(description)}",
         "---",
         "",
         stamped,
