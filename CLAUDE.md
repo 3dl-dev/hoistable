@@ -32,6 +32,16 @@ not need steering; the shape is fundamental, not stylistic.
    petard) delivered *through* that skill so users can fully exploit the software, not
    merely install it. The three usage modes are in `docs/operator-model.md`.
 
+   **The builder nests — do not flatten it.** The builder's output is itself a
+   *self-building* skill: on first use a receiver agent self-extracts a verified harness
+   from the pin, then hoists and grades the app. So the thing under test is never just
+   "did the app deploy" — it is the whole tower (emit → self-extract → clone → deploy →
+   grade), and the honest grade extends over that whole stack. Hoistable ships *itself*
+   the same way (it emits its own hoist skill; it is its own first consumer), and the
+   tower is recursive: a hoisted hoistable can emit the next app's skill. The constant
+   drift after a reset is to collapse this into a first-order app-deploy tool — it is a
+   skill *builder* (nested, recursive), delivered agent-first.
+
 1. **You are the operator.** develop / preflight / sysop / petard are agent *roles*,
    not programs. When you deploy, you *are* sysop; when you extend, you *are* develop.
    There is no separate automation to build that replaces you: an operator running a
@@ -39,7 +49,11 @@ not need steering; the shape is fundamental, not stylistic.
    (build-rule 1 — the generator is an agent following a spec, not a script). So
    "manual vs automated" is never a real distinction here. If you find yourself asking
    "how do I automate this loop," the answer is: put the loop in a skill and let an
-   agent run it, doing the messy inference in-loop.
+   agent run it, doing the messy inference in-loop. And the roles are **meta-skills**:
+   each composes expertise — skills and best practices you author *or pull from the
+   public sphere* — to be a domain expert (develop = dev, preflight = deployment-planning,
+   sysop = ops, petard = backup/continuity). Expertise is *resolved in*, never a hardcoded
+   menu of the skills "we support." (Full model: `docs/operator-model.md`.)
 
 2. **Resolve, don't depend. Author just-in-time, don't pre-build.** A requirement
    resolves against what the target *actually offers*, re-derived by probing every
@@ -51,7 +65,14 @@ not need steering; the shape is fundamental, not stylistic.
 
 3. **Anti-constrain.** Don't box in what doesn't need boxing. No hardcoded backend, no
    fixed taxonomy, no closed menu, no "which of these N environments are you." A fixed
-   enum of backends/rungs/environments is the smell. Keep it generic and resolved.
+   enum of backends/rungs/environments is the smell. Keep it generic and resolved. This
+   is what **build-time** does — it *narrows* the huge universe of options a naive agent
+   and user must swim through to a small, sane, still-resolved-and-overridable set (a
+   nudge, not a lane). **Narrow ≠ fix:** narrowing shrinks the search space while keeping
+   every choice resolved at the *user's* runtime; fixing bakes one choice into the
+   shipped recipe and deletes the user's choice (the recorded failure: hardcoding an
+   app's substrate into its config). A shipped recipe that names one backend where the
+   target could resolve several is a fix, not a narrow.
 
 4. **Honest, always — no silent success, no silent spend.** State plainly what is built
    *and tested* versus *designed*; never let a design read as a capability. Grade
@@ -95,6 +116,16 @@ not need steering; the shape is fundamental, not stylistic.
 - Labeling a rung or result with a strength/guarantee it did not earn → stop:
   honest-weaker beats dishonest-strong. Grade it, then label what you measured, and do
   not wire an unearned rung into the resolvable set.
+- Flattening the project to a first-order app-deploy tool — forgetting the builder nests
+  and the operators are meta-skills → stop: it is a skill *builder* whose output is a
+  self-building skill, delivered agent-first; the grade spans the whole tower, not one
+  app's deploy. (The drift that keeps recurring after a context reset — re-read
+  principle 0.)
+- Grading by running the Python spine (`hoist.hoist`) and calling it the product → that
+  is a builder-side *spine* grade; the product is a receiver *agent* following the
+  emitted skill. Grade the agent-first path before you claim the real thing works.
+- Shipping a recipe that names one backend/substrate/profile the target could resolve
+  several ways → you fixed, not narrowed. Keep it resolved at the user's runtime.
 
 ## Working here
 
