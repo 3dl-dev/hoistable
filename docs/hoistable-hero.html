@@ -1,103 +1,88 @@
 <title>hoistable</title>
 <style>
   :root{
-    /* sibling of arlo's warm void, but lit cool: one teal light on in a dark room */
-    --void:#070c0d; --void-2:#0a1113;
-    --panel:#0a1214; --panel-edge:#123037; --panel-top:#0e1c20;
-    --teal:#3fd6c9; --teal-bright:#8ff2e8; --teal-dim:#2f8f89;
-    --cream:#e6f2f0; --muted:#5b7773;
-    --ok:#6fd08a; --decline:#e0925a;
+    --page:#090d0e;
+    --card:#0b1112; --card-edge:#182629;
+    --panel:#0d1517; --panel-edge:#1b2c30; --panel-top:#101c1f;
+    --teal:#45d3c6; --teal-bright:#86efe3; --teal-dim:#3a8f88;
+    --cream:#e7f2f0; --muted:#67837f; --faint:#8aa39e;
+    --ok:#64c98a; --warn:#d98a56;
     --mono: ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
     --grotesque: -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,"Helvetica Neue",Arial,sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{background:var(--void);min-height:100%}
+  html,body{background:var(--page);min-height:100%}
   body{display:grid;place-items:center;padding:24px;font-family:var(--mono)}
 
   .stage{width:100%;max-width:1200px}
   .poster{
     container-type:inline-size;
     position:relative; width:100%; aspect-ratio:1200/630; overflow:hidden;
-    border-radius:14px;
-    background:
-      radial-gradient(120% 140% at 82% 40%, rgba(63,214,201,.15), rgba(50,160,180,.05) 32%, transparent 58%),
-      linear-gradient(150deg,var(--void) 0%,var(--void-2) 62%,#050a0b 100%);
-    border:1px solid #0f2529;
-    box-shadow:0 30px 90px rgba(0,0,0,.55);
-    isolation:isolate;
+    border-radius:12px;
+    background:var(--card);
+    border:1px solid var(--card-edge);
   }
-  /* faint scanlines, a room lit by one screen */
-  .poster::after{
-    content:""; position:absolute; inset:0; z-index:5; pointer-events:none;
-    background:repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0,0,0,.16) 2px 3px);
-    mix-blend-mode:overlay; opacity:.5;
-  }
+  .grid{position:absolute; inset:0; display:grid; grid-template-columns:41% 59%}
 
-  .grid{position:absolute; inset:0; display:grid; grid-template-columns:41% 59%; z-index:2}
-
-  /* ---- left: identity ---- */
-  .left{padding:7cqw 0 5.5cqw 6.5cqw; display:flex; flex-direction:column; height:100%}
+  /* ---- left: identity, vertically centered so there is no mid-text void ---- */
+  .left{padding:0 3cqw 0 6.5cqw; display:flex; flex-direction:column; justify-content:center; height:100%}
   .eyebrow{
     font-size:1.12cqw; letter-spacing:.4em; text-transform:uppercase;
     color:var(--teal-dim); font-weight:600;
   }
   .wordmark{
     font-family:var(--grotesque); font-weight:800; letter-spacing:-.04em;
-    font-size:6cqw; line-height:.9; color:var(--teal);
-    margin-top:2.2cqw;
-    text-shadow:0 0 26px rgba(63,214,201,.42), 0 0 3px rgba(143,242,232,.5);
+    font-size:6cqw; line-height:.9; color:var(--teal); margin-top:2cqw;
   }
   .expand{
     font-size:1.62cqw; letter-spacing:.01em; color:var(--cream); margin-top:1.7cqw;
-    font-weight:500; max-width:31cqw; line-height:1.35;
+    font-weight:500; max-width:33cqw; line-height:1.35;
   }
   .kicker{
-    margin-top:auto; max-width:31cqw;
-    font-size:1.92cqw; line-height:1.34; color:#cadedb; font-weight:500;
-    font-family:var(--grotesque); letter-spacing:-.01em;
+    font-size:1.9cqw; line-height:1.34; color:#cadedb; font-weight:500;
+    font-family:var(--grotesque); letter-spacing:-.01em; max-width:33cqw; margin-top:2.6cqw;
   }
-  .kicker b{color:var(--teal-bright); font-weight:700}
+  .kicker b{color:var(--teal); font-weight:700}
   .foot{
-    display:flex; align-items:center; gap:1.4cqw; margin-top:2.4cqw;
+    display:flex; align-items:center; gap:1.4cqw; margin-top:2.7cqw;
     font-size:1.22cqw; color:var(--muted);
   }
   .foot .repo{color:var(--teal-dim)}
   .foot .dot{width:.5cqw;height:.5cqw;border-radius:50%;background:var(--muted)}
 
-  /* ---- right: the agent doing the work in your session ---- */
-  .right{display:grid; place-items:center; padding:5cqw 6cqw 5cqw 1cqw}
+  /* ---- right: a real hoist run ---- */
+  .right{display:grid; place-items:center; padding:4.5cqw 6cqw 4.5cqw 1cqw}
   .term{
-    width:100%; border-radius:10px; overflow:hidden;
-    background:linear-gradient(180deg,var(--panel) 0%,#080e10 100%);
-    border:1px solid var(--panel-edge);
-    box-shadow:0 0 0 1px rgba(63,214,201,.06), 0 22px 60px rgba(0,0,0,.6),
-               0 0 60px rgba(50,180,190,.10);
+    width:100%; border-radius:9px; overflow:hidden;
+    background:var(--panel); border:1px solid var(--panel-edge);
   }
   .bar{
     display:flex; align-items:center; gap:.9cqw;
     padding:1.1cqw 1.5cqw; background:var(--panel-top);
     border-bottom:1px solid var(--panel-edge);
   }
-  .led{width:.85cqw;height:.85cqw;border-radius:50%;background:#183530}
-  .led.on{background:var(--teal);box-shadow:0 0 8px rgba(63,214,201,.8)}
+  .led{width:.85cqw;height:.85cqw;border-radius:50%;background:#26403c}
+  .led.on{background:var(--teal-dim)}
   .bar .who{margin-left:.6cqw;font-size:1.15cqw;color:var(--teal-dim);letter-spacing:.02em}
   .bar .stat{margin-left:auto;font-size:1.05cqw;color:#4d6864}
 
-  .body{padding:1.8cqw 2cqw 1.9cqw; font-size:1.4cqw; line-height:1.5}
-  .q{color:var(--cream); margin-top:1.5cqw}
+  .body{padding:1.7cqw 2cqw 1.8cqw; font-size:1.36cqw; line-height:1.48}
+  .q{color:var(--cream); margin-top:1.35cqw}
   .q:first-child{margin-top:0}
   .q .p{color:var(--teal); margin-right:.7cqw}
-  .call{color:var(--cream); margin-top:1.25cqw}
-  .call .m{color:var(--teal); margin-right:.7cqw; text-shadow:0 0 12px rgba(63,214,201,.4)}
+  .call{color:var(--cream); margin-top:1.05cqw}
+  .call .m{color:var(--teal); margin-right:.7cqw}
   .call .fn{color:var(--teal-bright)}
-  .res{color:#6a8480; margin-top:.3cqw; padding-left:1.1cqw}
+  .call .arg{color:var(--faint)}
+  .res{color:var(--faint); margin-top:.28cqw; padding-left:1.1cqw}
   .res .b{color:#37514d; margin-right:.7cqw}
   .ok{color:var(--ok)}
-  .warn{color:var(--decline)}
-  .url{color:var(--teal-bright)}
+  .warn{color:var(--warn)}
+  .sha{color:var(--cream)}
+  .report{color:var(--cream); margin-top:.5cqw}
   .cur{
-    display:inline-block;width:1cqw;height:1.6cqw;vertical-align:-.25cqw;
-    background:var(--teal);margin-left:.3cqw;box-shadow:0 0 10px rgba(63,214,201,.7);
+    display:inline-block;width:.95cqw;height:1.55cqw;vertical-align:-.25cqw;
+    background:var(--teal);margin-left:.4cqw;
     animation:blink 1.05s steps(1) infinite;
   }
   @keyframes blink{50%{opacity:0}}
@@ -111,7 +96,6 @@
         <div class="eyebrow">Self-host &nbsp;·&nbsp; agent-driven</div>
         <div class="wordmark">hoistable</div>
         <div class="expand">Run any self-hostable app, toy scale to production.</div>
-
         <div class="kicker">Loose glue that hands runtime and ops decisions to your coding agent. <b>Ship your product as a skill, or grab any app and run it yourself.</b></div>
         <div class="foot">
           <span class="repo">github.com/3dl-dev/hoistable</span>
@@ -125,23 +109,27 @@
           <div class="bar">
             <span class="led"></span><span class="led"></span><span class="led on"></span>
             <span class="who">hoistable · your session</span>
-            <span class="stat">~/apps/plausible</span>
+            <span class="stat">~/apps/honcho</span>
           </div>
           <div class="body">
-            <div class="q"><span class="p">&gt;</span>get plausible running here</div>
+            <div class="q"><span class="p">&gt;</span>here's honcho.SKILL.md, set it up</div>
 
-            <div class="call"><span class="m">⏺</span><span class="fn">Read</span>(docker-compose.yml)</div>
-            <div class="res"><span class="b">⎿</span>needs postgres + clickhouse</div>
+            <div class="call"><span class="m">⏺</span><span class="fn">Bash</span><span class="arg">(curl -sL …/operators-0.7.0.tgz | sha256sum)</span></div>
+            <div class="res"><span class="b">⎿</span><span class="sha">8b1c4b72…</span> matches pin <span class="ok">✔</span></div>
 
-            <div class="call"><span class="m">⏺</span><span class="fn">Bash</span>(docker compose up -d)</div>
-            <div class="res"><span class="b">⎿</span>[+] Running 3/3</div>
-            <div class="res"><span class="b">&nbsp;</span><span class="ok">✔</span> plausible-1 &nbsp;Started &nbsp;<span class="url">http://localhost:8000</span></div>
+            <div class="call"><span class="m">⏺</span><span class="fn">Bash</span><span class="arg">(tar xzf operators-0.7.0.tgz)</span></div>
+            <div class="res"><span class="b">⎿</span>hoist/&nbsp; envelope/&nbsp; operators/</div>
 
-            <div class="q"><span class="p">&gt;</span>now stand it up for real</div>
+            <div class="call"><span class="m">⏺</span>Probe substrate</div>
+            <div class="res"><span class="b">⎿</span>dind present · environmental</div>
 
-            <div class="call"><span class="m">⏺</span>prod profile: managed postgres, TLS via caddy</div>
-            <div class="res"><span class="b">⎿</span><span class="ok">✔</span> live &nbsp;<span class="url">https://analytics.acme.dev</span></div>
-            <div class="res"><span class="b">&nbsp;</span><span class="warn">⚠ backups not configured yet</span><span class="cur"></span></div>
+            <div class="call"><span class="m">⏺</span>Pre-check <span class="arg">(deploys nothing)</span></div>
+            <div class="res"><span class="b">⎿</span>buildable <span class="ok">✔</span></div>
+
+            <div class="call"><span class="m">⏺</span>Deploy honcho · isolated namespace · graded</div>
+            <div class="res"><span class="b">⎿</span>preflight <span class="ok">✔</span> · up <span class="ok">✔</span> · acceptance <span class="ok">3/3</span> · teardown <span class="ok">✔</span></div>
+
+            <div class="call" style="margin-top:1.1cqw"><span class="m">⏺</span>Built honcho. Transferred 3/3. Host clean.<span class="cur"></span></div>
           </div>
         </div>
       </div>
