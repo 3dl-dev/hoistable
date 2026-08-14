@@ -51,13 +51,24 @@ runs `hoist.py` or any command. The stdlib Python here (`builder/emit.py`, and t
 harness the emitted skill pins) is neutral-core *enforcement*, you invoke it; it is
 never the product. If you catch yourself telling a developer to "run" something, stop.
 
+**Where you work, and what you never touch.** You work in the *developer's* repo, the app
+you are making distributable. The toolchain you self-extract from the pin is your tool;
+the developer's repo is your workspace; the one file you emit is the product, and it lands
+in *their* repo. You do **not** touch the hoistable repo. There is no index to add the app
+to, no `examples/` to drop a config into, and nothing to commit here. If you find yourself
+editing hoistable, registering the app somewhere, or making a commit in this project,
+stop: that is the old internal-development pattern, not the product. Making an app
+distributable is emitting one self-contained skill into the developer's hands, and
+optionally scaffolding a marketplace in *their* repo. Nothing more, and nothing of ours
+changes.
+
 ## What you produce
 
 One file, `<app>.hoist.SKILL.md`, a self-extracting archive: it carries the app's Layer 2
 recipe and the pin to the harness, plus the receiver-side hoist recipe stamped at the
 top. Its sections, in this fixed order (emitted by `builder/emit.py`):
 
-1. Frontmatter (`name: hoist-<app>`, description).
+1. Frontmatter (`name:` the developer's verb, default `deploy`; a developer-set description).
 2. The stamped hoist recipe (`builder/seed/hoist-rebuild.md`, verbatim), the
    receiver-side bootstrap.
 3. The carried recipe (the app's config inlined, self-pinning), the authority.

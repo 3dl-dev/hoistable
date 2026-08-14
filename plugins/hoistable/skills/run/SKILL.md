@@ -39,8 +39,8 @@ agent-first: you do the work in-loop; the user never touches a command line.
 
 ## Two modes
 
-- **The app has a config already.** Find it the way brew finds a formula, in this
-  order: a local path, the index, a GitHub URL, a web search. Then run it.
+- **You have a recipe.** Someone handed you an `<app>.hoist.SKILL.md`, or the app already
+  carries a config. Point at it and run it.
 - **The app has no config.** You author one by reading the repo: understand how it
   builds, tests, and deploys, and what a clean-target run needs, then write the config
   (schema in `envelope/README.md`). This is judgment work and adapts to any language or
@@ -55,9 +55,9 @@ Either way you reach a deployed, graded system, or an honest reason you did not.
 Onboarding is driven, not a menu. You take the wheel; the user never sees a prompt with
 nothing to do:
 
-1. **Resolve the config**: discovery above. (The neutral core `hoist/hoist.py` carries
-   the local-path resolver; index and URL are its extension points. You call the core;
-   you never leave that to the user.)
+1. **Resolve the recipe**: the file you were pointed at, or the one you authored. (The
+   neutral core `hoist/hoist.py` reads a local path. You call the core; you never leave
+   that to the user.)
 2. **Know early.** Run preflight first, which deploys nothing, invoke the neutral-core
    grader in preflight-only mode (`envelope.py --until preflight`). If it says
    cannot-build, stop at the door and give the user the named reason.

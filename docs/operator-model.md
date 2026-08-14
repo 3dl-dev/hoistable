@@ -1,4 +1,4 @@
-# Operators as meta-skills; build-time as narrowing; the three ways Hoistable is used
+# Operators as meta-skills; build-time as narrowing; how Hoistable is distributed
 
 Design direction captured 2026-08-13. This is forward direction (the model, the
 invariants, the open decisions), not a frozen conclusion. Re-derive the live parts
@@ -52,65 +52,14 @@ hardcoding an app's substrate into its shipped config, `honcho depends_on docker
 That deleted the option space instead of narrowing it, and deleted the user's runtime
 choice with it. Backed out.)
 
-## The three ways Hoistable is used
+## How Hoistable is distributed (current model)
 
-1. **App developer shipping a product, the skill builder ("WiX++++").** They invoke
-   the hoistable skill to *generate* a single distributable deployment skill that
-   packages hoistable + their app into a release bundle. That one skill self-extracts
-   the hoistable harness and does the whole install / config / clone-or-fork / deploy on
-   the target. They may or may not index with hoistable. **Self-contained.**
+Two plugin marketplaces, agent-first (see `docs/marketplace.md` and the README for the commands).
 
-2. **User hoisting an app.** Uses the hoist skill / index to hoist an app, whether the
-   app was hoisted before or not, from the index, from source, or from a URL. Ends at a
-   deployed, operable system. This is `brew install` (found) or brew-author (never
-   distributed hoistably; hoist builds the config *with* the user).
+- **The tools** live in `3dl-dev/hoistable` as one plugin, `hoistable`, with two skills: `/hoistable:build` (make your app a self-installing skill) and `/hoistable:run` (run a recipe). This is the only place our name shows.
+- **A built app** is one self-contained `SKILL.md`. It carries the app's recipe inlined and a pin to the harness, and on first use a receiver agent self-extracts the harness, deploys, and grades. The developer chooses the plugin name, the skill verb, and the wording; the defaults carry none of our naming.
+- **A developer ships it from their own repo** (a one-plugin marketplace the build step scaffolds), or lists it in the shared tap `3dl-dev/hoistables`. Either way, `build` touches nothing of ours: no index, no `examples/` here, no commit to this repo. The output is one file in the developer's hands.
 
-3. **Developer integrating hoistable into their own distributable.** For use with #2,
-   through whatever distribution channel they choose, via **pinned-pull**: explicitly
-   **NOT** a single self-extracting skill. Point don't embed; the config pins operator
-   versions and pulls them from the Layer 0 release.
+The operators (develop, preflight, sysop, petard) travel inside the built skill so the user can operate what they deployed, not merely install it.
 
-Modes 1 and 3 are both developer-facing and both end at a mode-2 hoist on the user's
-side; they differ in the *artifact*: mode 1 is one self-contained skill that carries the
-harness, mode 3 is a config that references a pinned harness.
-
-## Honest built / recorded status (re-derive; do not trust as frozen)
-
-- **Mode 2**: recorded (README "hoist: the skill you invoke") and **built**: the hoist
-  skill resolves an app path→index→URL and authors a config for un-hoisted apps (its
-  neutral core `hoist.py`/`author.py` carry the resolver and the first-draft helper).
-  Web-search discovery is the one open extension point.
-- **Mode 3**: recorded (README "Distribution and repeatability") and **built**: a config
-  pins the operator kit by URL+hash and the skill pulls+verifies it (`pins.py`);
-  `build_bundle` pins-not-vendors; proven end-to-end on agent-dyno against a real GitHub
-  release.
-- **Mode 1**: **not built** as a single self-extracting skill. What exists today
-  (`build_bundle`) is mode-3's pinned-pull shape, not a self-contained vendored skill.
-- The three-mode trichotomy, the meta-skill concept, and build-time-as-narrowing were
-  **not previously recorded**; this file is their first capture.
-
-## Open decision (reserved to Baron): mode 1 vendors; the posture pins
-
-Mode 1 self-*extracts* the harness, which means the artifact **carries** it, 
-vendoring. The build rules deliberately chose the other way: item 270 reversed
-adopt-by-copy in favor of pinned-pull (build-rules 4 "federated by pinned version line"
-and 6 "point don't embed"). So mode 1 is either:
-
-- **(a)** a sanctioned exception, a self-contained, offline-capable release artifact
-  that carries a **pinned snapshot** of the operator kit (repeatable by content hash,
-  no network at install), or
-- **(b)** still pins-and-pulls at install and is "single skill" only in packaging, not
-  in self-containment.
-
-Recommendation: **(a)**: a WiX-style installer that needs the network to fetch its own
-guts is not what "ships itself" should mean; carry a pinned, hash-verified snapshot so
-the bundle is liftable and offline (build-rule 3, "liftable and complete by reference"),
-while staying a *snapshot of a pinned version*, never a fork. Decision is Baron's.
-
-## Where this lives next
-
-- The meta-skill mechanism (an operator *pulling in and composing* a public
-  best-practice skill) is not built; today the operators are method files + reference
-  code. The smallest honest proof: one operator resolving one real public best-practice
-  skill to **narrow** one real product's options at build time, resolved at runtime.
-- Mode 1's skill builder (per the decision above) is the other open build.
+There is no index and no by-name discovery in the product; those were an earlier brew-style idea, replaced by plugin marketplaces. (`hoist.py` still has a dormant by-name branch as neutral-core plumbing; it is not how anyone uses this.)
