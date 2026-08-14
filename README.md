@@ -1,67 +1,56 @@
 # Hoistable
 
-Ship software as a skill that installs itself.
+Hand your software to someone and have it actually run on their machine.
 
-## The problem
+Software works where you built it and breaks everywhere else. The config is different, a service is missing, a port is taken. Whoever installs it ends up fixing all that by hand. A prebuilt package doesn't help. It just hides the breakage until the thing is already running wrong.
 
-Handing software to someone else is where it breaks. You send a repo or a binary, and on their machine the config is different, a service is missing, a port is taken, or it just "works on mine." Every install turns into someone bridging that gap by hand. Prebuilt packages don't fix it; they hide the gaps until the thing is already running wrong.
+Hoistable ships the recipe to stand your software up, not a finished build. You hand over one file. When someone installs it, their agent runs it for them. It clones the project, sets it up, deploys it, then runs your own tests on their machine and says plainly what worked and what didn't. Nobody types a command. If it can't run there, it tells you, instead of failing quietly.
 
-## How it works
+## Two things you do with it
 
-You ship a recipe, not a build. The recipe is a skill: a Markdown file an agent reads. When someone installs it, their agent runs it on their machine. It clones the project, configures it, deploys it, then rebuilds the project's own tests on that machine and reports an honest score of what worked and what didn't. Nobody types a command. The agent does the work and tells you plainly whether the software transferred.
+- **hoist** — take one of these recipes and get the software running, and graded, on your machine.
+- **hoistable** — turn your own software into one of these recipes, so other people can hoist it.
 
-There are two verbs:
+You make a recipe with `hoistable`. Other people run it with `hoist`.
 
-- **hoist** — run a distributable into a live, graded system on your target.
-- **hoistable** — turn your own app into that distributable in the first place.
+## Get the tools
 
-`hoistable` makes what `hoist` runs.
+Install the two tools as skills your agent can use:
 
-## Use it
+    for v in hoist hoistable; do
+      mkdir -p ~/.claude/skills/$v
+      curl -sL https://raw.githubusercontent.com/3dl-dev/hoistable/main/plugins/$v/skills/$v/SKILL.md \
+        -o ~/.claude/skills/$v/SKILL.md
+    done
 
-Add the marketplace once (Claude Code):
+Now you can ask your agent to hoist an app, or to make your app hoistable. Any agent that reads `~/.claude/skills/` works, not only Claude Code.
 
-    /plugin marketplace add 3dl-dev/hoistable
+## Ship your software
 
-### Run software someone shipped
+Point `hoistable` at your repo and ask it to make your app hoistable. It works out the setup with you, writes one `your-app.hoist.SKILL.md`, and test-runs it on a clean machine so you know it stands up somewhere other than your laptop. Then hand that file to anyone.
 
-If someone hands you an `<app>.hoist.SKILL.md`, or drops one into your skills folder, ask your agent to hoist that app. It fetches a checksum-verified harness, brings the app up in a throwaway sandbox on your machine, runs the app's own tests there, and reports the score. Nothing you already have running is touched.
+## Run someone else's
 
-Tested wraps of other people's apps live in a separate registry, not in this repo.
+If someone gives you an `app.hoist.SKILL.md`, drop it in and ask your agent to hoist it. The app comes up in a sandbox on your machine, its own tests run there, and you get the score. Nothing you already have running is touched.
 
-### Ship your own software
+A few ready-made ones live at [3dl-dev/hoistables](https://github.com/3dl-dev/hoistables).
 
-    /plugin install hoistable@hoistable
+## What you can count on
 
-Point it at your repo and ask it to make your app hoistable. It writes the config with you, emits one `your-app.hoist.SKILL.md`, and grades it on a clean target so you know it stands up somewhere other than your laptop. Publish that one file anywhere: a GitHub release, your own marketplace, or straight into someone's skills folder.
-
-### Hoist a config directly
-
-    /plugin install hoist@hoistable
-
-Point `hoist` at a config or a `.hoist.SKILL.md` and it deploys and grades it, no marketplace needed.
-
-### Other agent harnesses
-
-The `SKILL.md` file is the whole unit. Any harness that reads `~/.claude/skills/` (OpenCode, and others by that convention) takes the same file. Drop it at `~/.claude/skills/<name>/SKILL.md`. The plugin marketplace is the Claude Code convenience on top of that.
-
-## What you get
-
-- **An honest answer.** The install rebuilds the app's acceptance tests on your machine and prints what passed and what failed. A hoist that cannot say it worked says what didn't instead. No silent success.
-- **No collateral damage.** Every hoist runs in a namespace the runner owns and tears down after, and it refuses to deploy at all unless a profile declares how it isolates. It will not replay an app's own deployment over a copy you already run.
-- **Nothing trusted blindly.** The skill names its harness by URL and sha256. The receiver fetches it, checks the hash, and only then runs it.
+- **It tells you the truth.** Every install re-runs the app's own tests on your machine and prints what passed and what failed. A hoist that can't say it worked says what didn't.
+- **It won't wreck anything.** Each hoist runs in its own sandbox and cleans up after. It will not stomp a copy of the app you already have running.
+- **You don't have to trust it blindly.** The recipe names the code it fetches by URL and checksum. Your machine gets it, checks the hash, and only then runs it.
 
 ## Under the hood
 
-A hoist is carried out by four operator roles the skill carries: **develop** extends the app, **preflight** scopes the deploy and predicts whether it will work, **sysop** deploys and operates it (composing whatever infra skills the target needs), and **petard** is a local, frontier-independent fallback so you can still operate when the cloud or the model is down. The Python in the repo (`envelope/`, `hoist/`, `builder/`) is the neutral core the skill's agent calls to enforce the guarantees above. It is not a command line. The skill is the interface.
+Four roles do the work, all carried by the recipe. **develop** extends the app. **preflight** checks whether the deploy will work before it runs. **sysop** deploys and operates it. **petard** is a local fallback, so you can still run things when the cloud or the model is down. The Python in this repo enforces the guarantees above. It is not a command line. The skill is what you use.
 
-For depth: `docs/operator-model.md` (the modes and the operators), `docs/contracts.md` (how the roles hand off), `docs/ops-substrate.md` (running real infrastructure), `docs/marketplace.md` (publishing), and `CLAUDE.md` (how to build here).
+More detail is in `docs/operator-model.md`, `docs/contracts.md`, `docs/ops-substrate.md`, and `docs/marketplace.md`. To work on the project itself, read `CLAUDE.md`.
 
 ## Status
 
-Working core, graded against real infrastructure rather than mocks.
+Working, and tested against real infrastructure rather than mocks.
 
-Built and tested: the honest-grade envelope; isolation as a resolved bind, with three rungs the loop authored itself — `dind` (throwaway container), `k3s` (cluster), and `systemd` (confined); the four operators; `hoist` and `hoistable`; and the marketplace, with agent-dyno hoisting to a clean score end to end and a third-party compose service hoisting non-destructively in a sandbox. A weaker model on a different harness (OpenCode driving a local Qwen) installs and self-extracts a skill; driving that model all the way to a graded deploy is still open.
+Done: the honest grading; sandboxed deploys with three kinds of isolation the system sets up itself (a throwaway container, a cluster, and a confined process); the four roles; `hoist` and `hoistable`; and a live run of agent-dyno hoisting to a clean score, plus a docker-compose service brought up and torn down without touching the host. A weaker model on a different agent (OpenCode with a local Qwen) installs and unpacks a recipe. Getting that model all the way to a graded deploy is still open.
 
-Designed, not built (see `docs/ops-substrate.md`): the resolver strength model, the cost spine (estimate, reconcile, no silent spend), and building infrastructure up from a bare machine.
-</content>
+Not built yet (see `docs/ops-substrate.md`): the rung strength model, cost tracking, and standing a server up from a bare machine.
