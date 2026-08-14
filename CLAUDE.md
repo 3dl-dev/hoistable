@@ -15,7 +15,9 @@ and every product Hoistable wraps becomes its own distributable skill. Hoistable
 both the **skill builder** (it turns an app into a distributable skill) and the
 **framework** that skill carries, develop / preflight / sysop / petard, so the user
 can fully *exploit* the distributed software, not merely install it. Nobody ever reaches
-for `hoist.py`; the Python is neutral-core enforcement behind the skill. The **product**
+for a command line; the enforcement is the honest-grade discipline the skill carries,
+followed by the agent in the user's session, and the only Python left is a build-time
+assembler (`emit.py`) behind the builder. The **product**
 is described in `README.md` (thesis + three layers), `docs/operator-model.md`
 (agent-first, the skill channel, operators-as-meta-skills, the three usage modes),
 `docs/build-rules.md` (how the operators get built), `docs/contracts.md` (operator
@@ -29,11 +31,13 @@ not need steering; the shape is fundamental, not stylistic.
 ## The fundamental shape
 
 0. **Agent-first, the skill is the product; the CLI is not.** The distribution channel
-   is *skills*, consumed by agents. Nobody runs `hoist.py`, ever, an agent invokes the
+   is *skills*, consumed by agents. Nobody runs a command line, ever, an agent invokes the
    *hoist skill*, and every product Hoistable wraps becomes its own distributable skill
-   (that is the channel: a skill builder whose output is a skill). The stdlib Python
-   (`envelope.py`, `hoist.py`, the operators' helpers) is neutral-core *enforcement* the
-   skill's agent calls, never a user-facing command line. When you catch yourself
+   (that is the channel: a skill builder whose output is a skill). There is no runtime of
+   ours: the emitted skill carries the honest-grade discipline as prose and the receiver's
+   agent follows it in-context. The only stdlib Python is a build-time assembler
+   (`emit.py`) that writes the one file; it is never a user-facing command line and no
+   receiver runs it. When you catch yourself
    "proving" the product by running a `.py` at a shell, you are testing the core as a
    *builder*, legitimate for grading, but not the product surface; the product is the
    skill an agent invokes. Hoistable is two things: the **skill builder** (an app → its
@@ -107,13 +111,19 @@ not need steering; the shape is fundamental, not stylistic.
    rule; it bites hardest on infrastructure. A saved resolution is a replayable recipe,
    re-validated on replay, not a stored truth.)
 
-6. **The neutral core is small code that enforces invariants; the judgment is you.**
-   Stdlib Python enforces the non-negotiable order (preflight-before-deploy,
-   always-teardown, grade-honestly, verify-residue). Discovery, authoring,
-   matching-need-to-solution, filling the long tail, that is the agent. Watch for the
-   core accreting orchestration or policy that belongs to the agent: if `hoist.py` or an
-   operator's code starts making judgments, that judgment belongs in the skill, not the
-   script.
+6. **The enforcement is the discipline the skill carries; the judgment is you.** The
+   non-negotiable order (preflight-before-deploy, always-teardown, grade-honestly,
+   verify-residue) is written into the emitted skill as prose, and the agent follows it in
+   the user's session, re-derived in their environment. There is no runtime of ours
+   enforcing it, and there must not be: a coding agent following clear instructions holds
+   the order itself. Discovery, authoring, matching-need-to-solution, filling the long
+   tail, deploy, grade, resolution, all of it is the agent. The only Python that survives
+   is a build-time assembler (`emit.py`), and it survives only because writing one file
+   deterministically is a fair build convenience. Watch for any of our code trying to *do*
+   the work (deploy, grade, resolve a substrate): that belongs in the skill, not a script.
+   (Python's scope is the narrow set of things inference is too slow, inaccurate, or
+   nondeterministic to do; almost always it is better to re-derive in the user's
+   environment.)
 
 7. **Hoistable depends on nothing of ours.** `rd`, this harness, a particular model,
    these are how *we* build Hoistable, not things it ships or requires. Product-level
@@ -129,8 +139,8 @@ not need steering; the shape is fundamental, not stylistic.
   → stop: separate built-and-tested from designed, out loud, every time.
 - Reaching for `rd` (or any of our tools) as part of the *product* → stop: ours, not
   Hoistable's.
-- Framing the CLI / `hoist.py` as the product surface, or "proving" the product by
-  running a `.py` at a shell → stop: nobody reaches for commands, the channel is skills,
+- Framing any CLI or `.py` as the product surface, or "proving" the product by
+  running Python at a shell → stop: nobody reaches for commands, the channel is skills,
   agent-first. The Python is neutral-core enforcement *behind* the skill; the skill an
   agent invokes is the interface. (This is the drift that keeps happening after a
   context reset, re-read principle 0.)
@@ -142,8 +152,8 @@ not need steering; the shape is fundamental, not stylistic.
   self-building skill, delivered agent-first; the grade spans the whole tower, not one
   app's deploy. (The drift that keeps recurring after a context reset, re-read
   principle 0.)
-- Grading by running the Python spine (`hoist.hoist`) and calling it the product → that
-  is a builder-side *spine* grade; the product is a receiver *agent* following the
+- Grading by running any Python of ours instead of an agent following the emitted skill
+  → that is a builder-side *spine* grade; the product is a receiver *agent* following the
   emitted skill. Grade the agent-first path before you claim the real thing works.
 - Shipping a recipe that names one backend/substrate/profile the target could resolve
   several ways → you fixed, not narrowed. Keep it resolved at the user's runtime.

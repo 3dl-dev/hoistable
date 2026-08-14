@@ -11,8 +11,10 @@ crosses that cliff.
 
 It crosses that cliff **agent-first**: the distribution channel is *skills*, invoked by
 agents, nobody reaches for a command line. `hoist` is a skill; every product Hoistable
-wraps becomes its own distributable skill; and the stdlib Python (`hoist.py`,
-`envelope.py`) is neutral-core *enforcement* behind the skill, never the product surface.
+wraps becomes its own distributable skill. The skill carries the honest-grade discipline
+as prose and the agent follows it in the user's session; there is no runtime of ours, and
+nothing to fetch or run. The only stdlib Python is a build-time assembler (`emit.py`) that
+writes the one file; it is never the product surface and no receiver runs it.
 
 ## Operators are meta-skills that compose expertise
 
@@ -62,4 +64,4 @@ Two plugin marketplaces, agent-first (see `docs/marketplace.md` and the README f
 
 The operators (develop, preflight, sysop, petard) travel inside the built skill so the user can operate what they deployed, not merely install it.
 
-There is no index and no by-name discovery in the product; those were an earlier brew-style idea, replaced by plugin marketplaces. (`hoist.py` still has a dormant by-name branch as neutral-core plumbing; it is not how anyone uses this.)
+There is no index and no by-name discovery in the product; those were an earlier brew-style idea, replaced by plugin marketplaces.

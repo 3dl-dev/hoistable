@@ -21,7 +21,6 @@ recovers it, so the config never lives outside the one file. Standard library on
 """
 
 import argparse
-import hashlib
 import json
 import os
 import sys
@@ -44,26 +43,6 @@ CHECKS = [
     "**No toolchain, no command line.** You hoist <app> in this session with ordinary "
     "tools; there is nothing of ours to fetch or run. The carried recipe is everything.",
 ]
-
-
-def pin_for_kit(kit_path, url=None, version=None):
-    """Derive a self-RESOLVING operators pin from a freshly built kit tarball: hash the
-    actual bytes and give it a URL that really resolves. This closes the gap the tower
-    surfaced -- build_release prints a pin whose URL points at a release that may not
-    exist yet, so a skill emitted with it fails self-extraction on a real receiver. Here
-    the pin is derived from the kit that exists: sha256 of its bytes, and a URL that
-    defaults to a `file://` to the kit's own location (offline, always resolves),
-    overridable with the published URL once there is one. Version defaults to the one in
-    the kit filename (`hoistable-operators-<version>.tgz`)."""
-    kit_path = os.path.abspath(kit_path)
-    with open(kit_path, "rb") as f:
-        sha = hashlib.sha256(f.read()).hexdigest()
-    if version is None:
-        base = os.path.basename(kit_path)
-        pre, suf = "hoistable-operators-", ".tgz"
-        version = base[len(pre):-len(suf)] if base.startswith(pre) and base.endswith(suf) \
-            else "unpinned"
-    return {"version": version, "url": url or ("file://" + kit_path), "sha256": sha}
 
 
 def _default_profile(config):
@@ -106,12 +85,11 @@ def _default_description(app):
             f"down clean.")
 
 
-def emit_skill(app_dir_or_config, pin=None, seed_path=SEED, config_name="config.json",
+def emit_skill(app_dir_or_config, seed_path=SEED, config_name="config.json",
                skill_name=None, description=None):
-    """Assemble the self-building skill text for an app. `app_dir_or_config` is a
-    directory holding config.json, or a path to a config file. `pin` is
-    {version, url, sha256}; when given it is injected so the carried recipe is
-    self-pinning. Deterministic: identical inputs -> identical bytes.
+    """Assemble the self-contained skill text for an app. `app_dir_or_config` is a
+    directory holding config.json, or a path to a config file. Deterministic: identical
+    inputs -> identical bytes. The emitted skill carries nothing to fetch or run.
 
     `skill_name` and `description` let the DEVELOPER brand the output as their own
     product. The result is the developer's, not ours: they choose the name their users
@@ -124,10 +102,8 @@ def emit_skill(app_dir_or_config, pin=None, seed_path=SEED, config_name="config.
         path = os.path.join(path, config_name)
     with open(path) as f:
         config = json.load(f)
-    # No toolchain pin is injected: the emitted skill is self-contained prose. The
-    # receiver agent does the hoist in its own session with ordinary tools; there is
-    # nothing of ours to fetch or run. `pin` is accepted for caller compatibility and
-    # ignored (removed with the runtime-Python retirement).
+    # The emitted skill is self-contained prose: no toolchain pin, nothing of ours to
+    # fetch or run. The receiver agent does the hoist in its own session.
     app = config.get("app", "app")
     _, profile = _default_profile(config)
     skill_name = skill_name or "deploy"                 # the dev's verb; never forced to ours
@@ -171,7 +147,7 @@ def emit_skill(app_dir_or_config, pin=None, seed_path=SEED, config_name="config.
     return "\n".join(parts)
 
 
-def scaffold_marketplace(out_dir, app_config, pin, *, marketplace_name, owner=None,
+def scaffold_marketplace(out_dir, app_config, *, marketplace_name, owner=None,
                          plugin_name=None, skill_name=None, description=None,
                          config_name="config.json"):
     """Write a ready-to-push, single-plugin marketplace so a developer can self-host
@@ -190,7 +166,7 @@ def scaffold_marketplace(out_dir, app_config, pin, *, marketplace_name, owner=No
     plugin_name = plugin_name or app
     skill_name = skill_name or "deploy"
     description = description or _default_description(app)
-    text = emit_skill(app_config, pin, skill_name=skill_name, description=description,
+    text = emit_skill(app_config, skill_name=skill_name, description=description,
                      config_name=config_name)
     pdir = os.path.join(out_dir, "plugins", plugin_name)
     os.makedirs(os.path.join(pdir, "skills", skill_name), exist_ok=True)
@@ -230,30 +206,16 @@ def extract_config(skill_text):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(
-        description="emit an app's Layer 2 recipe as a self-building hoist SKILL")
+        description="assemble an app's Layer 2 recipe as a self-contained hoist SKILL")
     ap.add_argument("app_dir", help="dir with config.json (or a config.json path)")
-    ap.add_argument("--operators-pin", default=None,
-                    help="JSON file with {version, url, sha256} to pin the harness")
-    ap.add_argument("--kit", default=None,
-                    help="path to a built operator kit tarball; derive a resolvable pin "
-                         "from it (sha256 + a URL that actually resolves)")
-    ap.add_argument("--kit-url", default=None,
-                    help="published URL for --kit (default: a file:// to its local path)")
     ap.add_argument("--out", default=None, help="output path (default: <app>.hoist.SKILL.md)")
     args = ap.parse_args(argv)
-    pin = None
-    if args.kit:
-        pin = pin_for_kit(args.kit, args.kit_url)
-    elif args.operators_pin:
-        with open(args.operators_pin) as f:
-            pin = json.load(f)
-        pin = pin.get("operators", pin)
-    text = emit_skill(args.app_dir, pin)
+    text = emit_skill(args.app_dir)
     cfg = extract_config(text)
     out = args.out or f"{cfg.get('app', 'app')}.hoist.SKILL.md"
     with open(out, "w") as f:
         f.write(text)
-    print(f"emitted {out} ({len(text)} bytes, self-pinning={'yes' if pin else 'no'})")
+    print(f"assembled {out} ({len(text)} bytes, self-contained)")
     return 0
 
 

@@ -89,22 +89,23 @@ A petard that lies is worse than no petard. This invariant is what keeps it hone
 
 Where a hoist runs is not a dependency, it is a resolved bind. The same verb the rest
 of Hoistable runs on (a config ref resolves, operator pins resolve, a secret resolves
-on the target) applies to isolation: a profile names the strength it needs, and the
-runner resolves the strongest rung the target offers, or reports cannot-build. The
-implementation is `envelope/substrate.py`; the contract is four things:
+on the target) applies to isolation: a profile names the strength it needs, and you (the agent) resolve the strongest
+rung the target offers, or report cannot-build. You resolve it in-context, in the user's
+session; the contract is four capabilities you provide with the target's own tooling:
 
-    provision()  ->  stand up a throwaway place to run (or nothing, for the host).
-    exec(cmd)    ->  run one step there, return its result.
-    teardown()   ->  destroy it; a hoist leaves the target as it found it.
-    workroot     ->  the base dir a clone and deploy happen under, in that place.
+    provision  ->  stand up a throwaway place to run (or nothing, for the host).
+    exec(cmd)  ->  run one step there, get its result.
+    teardown   ->  destroy it; a hoist leaves the target as it found it.
+    workroot   ->  the base dir a clone and deploy happen under, in that place.
 
 - **The host is the floor rung**: exec is a plain subprocess, and the isolation is only
   as strong as the config's own declared namespace, so a deploy that ignores it can
   still reach host state. A stronger rung (docker-in-docker today; rootless podman, a
   user-namespace sandbox, a burnable VM, a cluster Job next) runs the steps somewhere a
-  deploy cannot reach host state, whatever the config declares. A new rung is a new
-  adapter in `substrate.py`, never a fork of the grader, and the knowledge of how to
-  drive it lives in the adapter, not the core (point, don't embed).
+  deploy cannot reach host state, whatever the config declares. A new rung is one you stand
+  up in the loop from the target's own tooling (docker, kubectl, a cloud CLI), never
+  shipped code, and the knowledge of how to drive it is yours in-context (point, don't
+  embed).
 - **Both operators bind to it, which is why it is shared, not paired**: sysop resolves
   it and deploys into it (the isolation is environmental, not left to a config to
   honor); petard harvests ground truth out of it (contract C). One handle, two

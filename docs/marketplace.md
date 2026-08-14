@@ -27,11 +27,11 @@ No framework verb or wording lands on any product. One plugin per app means a se
 
 ## Self-hosting, us invisible
 
-A developer's `/hoistable:build` scaffolds a one-plugin marketplace in their own repo (`emit.scaffold_marketplace`). Their users run `/plugin marketplace add their/repo` and invoke `/their-app:<their-verb>`. They pick the plugin name, the skill verb, and the description, and the defaults carry none of our naming. The only tie to us is the harness pin URL, and they can host their own harness (`emit --kit <tgz> --kit-url <their-url>`) to depend on nothing of ours.
+A developer's `/hoistable:build` scaffolds a one-plugin marketplace in their own repo (`emit.scaffold_marketplace`). Their users run `/plugin marketplace add their/repo` and invoke `/their-app:<their-verb>`. They pick the plugin name, the skill verb, and the description, and the defaults carry none of our naming. The emitted skill carries nothing of ours (no toolchain, no pin), so a developer who self-hosts depends on nothing of ours: the one file is entirely theirs.
 
 ## What a skill carries
 
-One self-building `SKILL.md`. It carries the app's recipe inlined, a pin under `operators` (`version`, `url`, `sha256`), and the receiver-side steps stamped in: verify the pin's sha256 by hand, unpack the runtime, resolve the substrate, deploy through the enforced grader, and report built, honest-failure, or cannot-build. The runtime comes from the pin. Both repos are public, so the pin resolves over plain HTTPS with no auth.
+One self-contained `SKILL.md`. It carries the app's recipe inlined and the honest-grade discipline stamped in as prose: the receiver's agent resolves the isolation, clones, deploys in a sandbox, checks health, runs the held-back acceptance, tears down, and reports built, honest-failure, or cannot-build. It pins no toolchain and carries nothing to fetch or run, there is no runtime of ours. The receiver's agent does the whole hoist in its own session with ordinary tools.
 
 ## A frontmatter gotcha worth remembering
 
@@ -39,7 +39,8 @@ Skill descriptions are quoted in the frontmatter so a colon cannot break the YAM
 
 ## Re-cut a release
 
-1. Build the kit: `core/release/build_release.py` gives `hoistable-operators-<v>.tgz` (harness plus builder plus release tooling).
-2. Publish it: `gh release create operators-v<v> <tgz> --repo 3dl-dev/hoistable`.
-3. Regenerate the tool plugins pinned to it: `core/release/build_plugins.py --pin <pin.json>` (single source; never hand-edit `plugins/`). Re-emit each registry app skill with `core/builder/emit.py --kit <tgz> --kit-url <release-asset-url>`.
-4. Bump the versions in both `marketplace.json` files, commit, and push.
+There is no kit to build or publish: the skills carry nothing to fetch or run.
+
+1. Edit the sources (`core/builder/SKILL.md`, `core/hoist/SKILL.md`) and regenerate the tool plugins: `core/release/build_plugins.py` (single source; never hand-edit `plugins/`).
+2. Re-emit each registry app skill from its config: `emit.emit_skill(config)` writes a self-contained `<app>.hoist.SKILL.md`.
+3. Bump the versions in both `marketplace.json` files, commit, and push.

@@ -8,20 +8,20 @@ one who owns the secrets.
 
 ## Deploy, in isolation
 
-Deploy by running the config's chosen profile through the envelope:
-
-    python3 envelope/envelope.py <config> --profile <chosen>
+Deploy by following the honest-grade discipline in this session: stand up the resolved
+isolation, then run the config's chosen profile's bringup inside it. You do this in
+context with ordinary tools; there is no runner of ours to invoke.
 
 sysop never re-runs the app's own singular deployment. That is the non-destructive
-onboarding invariant, enforced by the runner: a profile that deploys must declare
-isolation or it is refused. Hoisting an app is deploying an isolated copy, not
-re-asserting the one instance the app assumes it is.
+onboarding invariant you hold: a profile that deploys must be isolated or it is refused.
+Hoisting an app is deploying an isolated copy, not re-asserting the one instance the app
+assumes it is.
 
 Isolation is resolved, not fixed. The profile names the strength it needs, and the
 runner resolves the strongest rung the target offers:
 
-- **The host floor**: the envelope owns a fresh namespace per hoist (its own name,
-  ports, storage), verifies the namespace is empty, and tears it down. This is a
+- **The host floor**: you own a fresh namespace per hoist (its own name, ports,
+  storage), verify it is empty before deploy, and tear it down after. This is a
   same-host copy, so the isolation is only as strong as that namespace.
 - **An environmental substrate** (`isolation.require: "environmental"`): the deploy
   runs inside a throwaway container, VM, or cluster Job where it cannot reach host
@@ -46,14 +46,14 @@ here, in the loop:
 1. **Interrogate the target.** Probe what isolation the host actually offers -- a
    container daemon, a reachable cluster, user namespaces, a burnable VM, a cloud
    account. Do the messy inference now; do not assume.
-2. **Author an adapter against the contract.** Implement the Substrate contract
-   (`{provision, exec, teardown, workroot, residue, strength, name}` in
-   `envelope/substrate.py`), matched to what you found. `DindSubstrate` and
-   `K3sSubstrate` are the reference builds -- follow their shape. Point, don't embed:
-   compose the target's own tooling (docker, kubectl, a cloud CLI), own only the glue.
-3. **Grade it against reality.** Run a real workload through the rung, verify it came
-   up, and verify teardown leaves no residue (the non-destructive invariant). A rung
-   that is not graded is not done. Add a test beside `tests/test_k3s.py`.
+2. **Stand the isolation up against what you found.** Resolve it in-context: compose the
+   target's own tooling (docker for a throwaway container, kubectl for a cluster Job, a
+   cloud CLI for a burnable VM) into an isolation you can provision, exec inside, and tear
+   down leaving no residue. Point, don't embed: own only the glue, and do it here in the
+   loop, not as a shipped adapter.
+3. **Grade it against reality.** Run a real workload through the isolation, verify it came
+   up, and verify teardown leaves no residue (the non-destructive invariant). An isolation
+   you have not graded against a real workload is not done.
 4. **Label its honest strength.** Never claim a guarantee the rung does not provide.
    k3s isolates the workload but runs its deploy driver on the host, so it is
    `cluster`, not host-safe `environmental`. An honest weaker rung beats a dishonest

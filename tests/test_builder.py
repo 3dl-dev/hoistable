@@ -86,7 +86,7 @@ class EmitShape(unittest.TestCase):
     def test_scaffold_marketplace_is_self_host_ready_and_unbranded(self):
         app_dir, _ = _toy_app_dir("toy")
         out = tempfile.mkdtemp(prefix="scaffold-")
-        inv = emit.scaffold_marketplace(out, app_dir, None, marketplace_name="mytap",
+        inv = emit.scaffold_marketplace(out, app_dir, marketplace_name="mytap",
                                        plugin_name="toy", skill_name="up",
                                        description="Bring toy up.")
         self.assertEqual(inv, "/toy:up")                 # what their users type

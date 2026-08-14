@@ -1,56 +1,58 @@
 ---
 name: hoist
-description: Onboard an app as a running, graded system from its hoistable config, or author that config for an app that has none. The brew of hoistable. Drives the whole flow and never leaves the user at a blank prompt.
+description: Get an app running and honestly graded on this machine, from a hoist skill someone shared or by authoring the recipe yourself. Agent-first: you do the work in this session, with ordinary tools. Nobody runs a command line, and there is nothing to fetch or install of ours.
 ---
 
-hoist is a skill you (the agent) run. Point it at an app and get the user to a running,
-graded system, whether or not the app was ever distributed hoistably. This is
-agent-first: you do the work in-loop; the user never touches a command line.
+hoist is a skill you (the agent) run, in the user's session, with tools already on the
+target (git, the container runtime, a shell). Point it at an app and get the user to a
+running, graded system, whether or not the app was ever packaged as a hoist skill. You do
+the work here, in context; the user never touches a command line, and there is no runtime
+of ours to fetch or run.
 
 ## Two modes
 
-- **You have a recipe.** Someone handed you an `<app>.hoist.SKILL.md`, or the app already
-  carries a config. Point at it and run it.
-- **The app has no config.** You author one by reading the repo: understand how it
-  builds, tests, and deploys, and what a clean-target run needs, then write the config
-  (schema in `envelope/README.md`). This is judgment work and adapts to any language or
-  shape. `hoist/author.py` drafts a first cut for common cases (hermetic test repos,
-  docker-compose) with `_TODO`s where a machine cannot infer intent; treat it as a
-  starting point you complete, not the author.
+- **You were handed a hoist skill.** Someone shared an `<app>.hoist.SKILL.md`. It is
+  self-contained: it carries the app's recipe and this same honest-grade discipline.
+  Follow it.
+- **The app has no recipe yet.** Author one by reading the repo: how it builds, tests, and
+  deploys, and what a clean-target run needs, the binds it depends on, how it must be
+  isolated, the bringup steps, the health checks, and the acceptance checks that prove it
+  actually works. This is judgment; ground the acceptance in what "it works" means for THIS
+  app, a machine cannot infer that. Then run the discipline below.
 
 Either way you reach a deployed, graded system, or an honest reason you did not.
 
-## Drive, never a blank prompt
+## The honest-grade discipline (same order every time; the order is the guarantee)
 
-Onboarding is driven, not a menu. You take the wheel; the user never sees a prompt with
-nothing to do:
+You carry this out yourself, in-session, against this target:
 
-1. **Resolve the recipe**: the file you were pointed at, or the one you authored. (The
-   neutral core `hoist/hoist.py` reads a local path. You call the core; you never leave
-   that to the user.)
-2. **Know early.** Run preflight first, which deploys nothing, invoke the neutral-core
-   grader in preflight-only mode (`envelope.py --until preflight`). If it says
-   cannot-build, stop at the door and give the user the named reason.
-3. **Deploy and grade.** If feasible, run the full pass, invoking the neutral-core grader
-   (`envelope.py`), which *enforces* isolation, the honest transfer grade, and teardown.
-   Report the honest outcome: built, honest-failure (say what did not transfer), or
-   cannot-build.
-4. **Hand off** to the operators the config includes: develop, sysop, petard.
+1. **Binds gate.** Probe each required capability on the host. A missing required one is
+   **cannot-build**: name it, stop, deploy nothing.
+2. **Resolve the isolation.** A deploy must never touch host state. If the recipe needs an
+   environmental sandbox (docker-in-docker, a throwaway VM), stand up the strongest one the
+   target offers and work inside it; otherwise use the recipe's host-floor namespace (fixed
+   project name, OS-chosen free ports, named volumes). A deploying profile that declares no
+   isolation is refused. Resolve this against the target; never assume it.
+3. **Preflight (deploy nothing).** Clone, run the cheap probes. A required blocker is
+   cannot-build, named, at the door.
+4. **Deploy (the install gate)** in the isolated namespace or sandbox only, never onto a
+   live host.
+5. **Health, then held-back acceptance.** Count health N of M; only if fully up, run the
+   acceptance checks. Their pass fraction is the honest transfer score, whether it really
+   works here, not just came up.
+6. **Always tear down, then verify no residue** left on the host.
+7. **Report one honest line:** built (transferred N of M), honest-failure (say what did not
+   transfer), or cannot-build (name the missing bind or isolation strength). Never let a
+   design read as a running system.
 
-## Invariants hoist carries
+## Hand off
 
-- **Non-destructive onboarding.** hoist never re-runs an app's own singular
-  deployment. Every hoist lands in a fresh isolated namespace the runner owns, and is
-  refused if a deploying profile declares no isolation. See README.md.
-- **No silent success.** The install is graded on the real target; one that cannot say
-  it worked says what did not.
-- **Pinned operators.** The config pins operator versions by URL from the Layer 0
-  release, so the same config resolves the same operators every time.
+Point the user at the operators the recipe includes, develop, sysop, petard, so they can
+use, operate, and keep the app running, not merely have it installed.
 
-## The skill is the channel; the core enforces
+## The skill is the channel
 
-This `SKILL.md` is the hoist skill in its Claude Code form; the same method ports to
-other *agent* harnesses behind a thin adapter, the channel is a skill an agent runs,
-never a command line. The neutral core is `envelope.py` plus `hoist.py` (standard
-library, no harness assumptions) and the config schema: the small code you call to
-*enforce* the invariants, not a driver a user runs.
+This is agent-first: you do it in the user's session. There is no neutral-core runtime to
+fetch, no CLI, no pinned toolchain. The discipline above is the whole of it, and you carry
+it out with the tools already on the target. The method ports to any agent harness; it is
+prose an agent follows, never a command a user runs.

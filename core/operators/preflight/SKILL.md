@@ -24,17 +24,13 @@ to turn. Choose or parametrize a profile in the config from the answers.
 
 ## Know early, deploy nothing
 
-Run the know-early pass:
-
-    python3 envelope/envelope.py <config> --profile <chosen> --until preflight
-
-It checks the required binds, the feasibility probes (platform, versions, deps,
-reachability, secret availability), which isolation substrate the target offers for the
-required strength, and that the target is clean, then stops before deploy. It provisions
-nothing: the environmental substrates are probed for feasibility, not stood up. Its
-verdict is feasible or cannot-build, with the blocker named (a required isolation
-strength no substrate on the target can meet is one such blocker). Give the user that
-verdict at the door, not three services deep.
+Run the know-early pass yourself, in this session, deploying nothing: check the required
+binds, the feasibility probes (platform, versions, deps, reachability, secret
+availability), which isolation the target offers for the required strength, and that the
+target is clean. Stand nothing up: probe an environmental substrate for feasibility, do
+not provision it. Your verdict is feasible or cannot-build, with the blocker named (a
+required isolation strength the target cannot meet is one such blocker). Give the user
+that verdict at the door, not three services deep.
 
 ## Emit
 
