@@ -1,53 +1,45 @@
-# The hoistable marketplace
+# Distribution: two repos, two verbs
 
-`3dl-dev/hoistable` is a Claude Code plugin marketplace. It distributes **self-building
-hoist skills**: you install a skill, and on first use your agent self-extracts the
-verified harness from a pinned release, hoists the app onto *your* target, and grades it
-with an honest transfer score. Agent-first, nobody runs a command line. It includes
-**hoistable itself**.
+Hoistable ships as Claude Code plugins, agent-first. Two public repos.
 
-## Add it, install a skill (Claude Code)
+## The tools: 3dl-dev/hoistable
 
     /plugin marketplace add 3dl-dev/hoistable
-    /plugin install honcho@hoistable        # ship honcho onto your target
-    /plugin install hoistable@hoistable     # hoistable itself, as a hoist skill
+    /plugin install hoistable@hoistable
 
-Then just invoke the skill; it self-builds before it reports the app is up.
+One plugin, `hoistable`, with two skills:
 
-The repo is **private**, so `gh` auth is used to fetch it and its release assets
-(`hoist/pins.py` fetches release assets via `gh`, which authenticates for private repos).
-For distribution to machines without access to this org, the repo and the operator-kit
-release must be public, an exposure decision.
+- `/hoistable:build` turns your app into a self-installing skill.
+- `/hoistable:run` installs and grades a recipe someone handed you.
 
-## What a plugin carries
+This is the only place our name shows. It is our tool, and only a developer building with it sees it.
 
-Each plugin is one self-building `skills/<name>/SKILL.md`. It carries:
+## The tap of tested apps: 3dl-dev/hoistables
 
-- the app's Layer 2 recipe (inlined) and the **operators pin** (`version`, `url`,
-  `sha256`), the URL points at the kit published as a release asset on this repo;
-- the receiver-side hoist recipe, stamped verbatim: verify the pin's sha256 by hand →
-  unpack the harness → resolve the substrate → deploy through the enforced grader →
-  report `built` / `honest-failure` / `cannot-build`.
+    /plugin marketplace add 3dl-dev/hoistables
+    /plugin install agent-dyno@hoistables
 
-Nothing else is needed on the receiver; the harness comes from the pin.
+Each app is its own plugin, named after the app, with a neutral `deploy` skill:
 
-## Other harnesses
+- `/agent-dyno:deploy`, `/honcho:deploy`, `/hoistable:deploy`.
 
-The portable unit is the `SKILL.md` file. Harnesses that read `~/.claude/skills/`
-(OpenCode, and others by convention) take the same file dropped at
-`~/.claude/skills/<name>/SKILL.md`. The `.claude-plugin/marketplace.json` install layer
-is Claude Code specific; the skill file itself is universal.
+No framework verb or wording lands on any product. One plugin per app means a self-hosted app never collides with ours or anyone else's. Naming a third-party app here is descriptive, like a Homebrew tap; it does not imply affiliation.
 
-## Re-cutting a release
+## Self-hosting, us invisible
 
-The plugin skills pin a kit release. To cut a new one:
+A developer's `/hoistable:build` scaffolds a one-plugin marketplace in their own repo (`emit.scaffold_marketplace`). Their users run `/plugin marketplace add their/repo` and invoke `/their-app:<their-verb>`. They pick the plugin name, the skill verb, and the description, and the defaults carry none of our naming. The only tie to us is the harness pin URL, and they can host their own harness (`emit --kit <tgz> --kit-url <their-url>`) to depend on nothing of ours.
 
-1. Build the kit: `release/build_release.py` → `hoistable-operators-<v>.tgz`.
+## What a skill carries
+
+One self-building `SKILL.md`. It carries the app's recipe inlined, a pin under `operators` (`version`, `url`, `sha256`), and the receiver-side steps stamped in: verify the pin's sha256 by hand, unpack the runtime, resolve the substrate, deploy through the enforced grader, and report built, honest-failure, or cannot-build. The runtime comes from the pin. Both repos are public, so the pin resolves over plain HTTPS with no auth.
+
+## A frontmatter gotcha worth remembering
+
+Skill descriptions are quoted in the frontmatter so a colon cannot break the YAML. An unquoted `: ` in a description makes Claude Code silently drop the skill, which cost real debugging time twice. `emit.py` quotes it, and a test guards it.
+
+## Re-cut a release
+
+1. Build the kit: `release/build_release.py` gives `hoistable-operators-<v>.tgz` (harness plus builder plus release tooling).
 2. Publish it: `gh release create operators-v<v> <tgz> --repo 3dl-dev/hoistable`.
-3. Re-emit each plugin skill pinned to it:
-   `builder/emit.py <app-config> --kit <tgz> --kit-url <release-asset-url>` →
-   `plugins/<app>/skills/<app>/SKILL.md`.
-4. Bump the plugin `version` in `.claude-plugin/marketplace.json`, commit, push.
-
-`builder/emit.py --kit` derives the pin (sha256 of the real bytes + the resolvable URL),
-so a shipped skill never carries a dangling pin.
+3. Re-emit each plugin skill pinned to it: `emit.py <app-config> --kit <tgz> --kit-url <release-asset-url>`, and re-assemble the tool skills from `builder/SKILL.md` and `hoist/SKILL.md`.
+4. Bump the versions in both `marketplace.json` files, commit, and push.
