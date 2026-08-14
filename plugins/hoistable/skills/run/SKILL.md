@@ -25,9 +25,9 @@ With the toolchain extracted, follow the method below.
 
 ```json
 {
-  "version": "0.6.0",
-  "url": "https://github.com/3dl-dev/hoistable/releases/download/operators-v0.6.0/hoistable-operators-0.6.0.tgz",
-  "sha256": "35de54f0751f8c1d6030cca6dad955e6b7f7f6ed576c449d87cd6e8e2ad05a41"
+  "version": "0.7.0",
+  "url": "https://github.com/3dl-dev/hoistable/releases/download/operators-v0.7.0/hoistable-operators-0.7.0.tgz",
+  "sha256": "8b1c4b72964d190f65fac09d0ef31611fbab6e4ba5d2dd17b9de985028fb7225"
 }
 ```
 
