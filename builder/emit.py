@@ -34,13 +34,12 @@ _FENCE = "```"
 # Invariants every emitted skill obeys, independent of the app. Static: they are the
 # grader's enforced guarantees, restated for the receiver agent.
 CHECKS = [
-    "**Non-destructive onboarding.** The hoist lands in a runner-owned isolated "
-    "namespace (its own name, ports, storage); a deploying profile that declares no "
-    "isolation is refused; teardown always runs. You never re-run <app>'s own singular "
-    "deployment onto a live host.",
-    "**No silent success.** <app> is graded on the real target; a hoist that cannot say "
-    "it worked says what did not transfer. A design never reads as a running system.",
-    "**Verified harness.** The operator kit is run only after its sha256 matches the "
+    "**Non-destructive.** The deploy lands in a runner-owned isolated namespace (its own "
+    "name, ports, storage); a profile that declares no isolation is refused; teardown "
+    "always runs. It never re-runs <app>'s own singular deployment onto a live host.",
+    "**No silent success.** <app> is graded on the real target; a run that cannot say it "
+    "worked says what did not transfer. A design never reads as a running system.",
+    "**Verified runtime.** The fetched kit is run only after its sha256 matches the "
     "carried pin; a tampered or unreachable kit is cannot-build, named.",
 ]
 
@@ -155,7 +154,7 @@ def emit_skill(app_dir_or_config, pin=None, seed_path=SEED, config_name="config.
         "",
         _binds_section(config, profile),
         "",
-        "## Checks (invariants every hoist obeys)",
+        "## Checks (invariants every deploy obeys)",
         "",
         checks,
         "",

@@ -9,7 +9,7 @@
     "minimal": {
       "isolation": {
         "require": "environmental",
-        "why": "honcho is an external app we have never hoisted; a fresh clone is not a clean target. Run it where a deploy cannot reach host state, whatever its compose declares (fixed project name, loopback ports, named volumes)."
+        "why": "honcho is an external app we have never packaged; a fresh clone is not a clean target. Run it where a deploy cannot reach host state, whatever its compose declares (fixed project name, loopback ports, named volumes)."
       },
       "preflight": [
         { "name": "docker-daemon-reachable", "probe": "docker info >/dev/null 2>&1", "required": true }
