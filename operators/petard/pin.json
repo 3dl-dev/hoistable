@@ -1,0 +1,10 @@
+{
+  "name": "arlo",
+  "role": "petard",
+  "repo": "3dl-dev/arlo",
+  "tag": "v0.1.0",
+  "commit": "2759609b904f8f1762ce16004b039303f5a613f2",
+  "marketplace": "3dl-dev/arlo",
+  "invoke": "arlo \"<your words>\"",
+  "note": "petard composes arlo (a CLI), pinned and version-lagged. Do not vendor arlo's code or import its modules; the user's agent invokes arlo in their session."
+}
