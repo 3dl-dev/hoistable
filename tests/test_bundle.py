@@ -21,8 +21,8 @@ import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, "..", "release"))
-sys.path.insert(0, os.path.join(HERE, "..", "hoist"))
+sys.path.insert(0, os.path.join(HERE, "..", "core", "release"))
+sys.path.insert(0, os.path.join(HERE, "..", "core", "hoist"))
 import build_bundle  # noqa: E402
 import build_release  # noqa: E402
 import hoist  # noqa: E402

@@ -29,7 +29,7 @@ import uuid
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, "..", "envelope"))
+sys.path.insert(0, os.path.join(HERE, "..", "core", "envelope"))
 import envelope  # noqa: E402
 import substrate  # noqa: E402
 

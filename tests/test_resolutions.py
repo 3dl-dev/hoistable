@@ -20,8 +20,8 @@ import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, "..", "envelope"))
-sys.path.insert(0, os.path.join(HERE, "..", "hoist"))
+sys.path.insert(0, os.path.join(HERE, "..", "core", "envelope"))
+sys.path.insert(0, os.path.join(HERE, "..", "core", "hoist"))
 import substrate  # noqa: E402
 import resolutions  # noqa: E402
 

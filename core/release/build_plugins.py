@@ -18,7 +18,8 @@ import re
 import sys
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.join(_HERE, "..")
+ROOT = os.path.join(_HERE, "..")          # core/ : the Python sources (builder, hoist, seed)
+REPO = os.path.join(ROOT, "..")           # repo root : the committed plugins/ artifact
 
 
 def _bootstrap(pin):
@@ -42,7 +43,7 @@ PLUGIN_SKILLS = [
 def build_plugins(pin):
     written = []
     for src, name, out in PLUGIN_SKILLS:
-        p = os.path.join(ROOT, out)
+        p = os.path.join(REPO, out)
         os.makedirs(os.path.dirname(p), exist_ok=True)
         with open(p, "w") as f:
             f.write(_assemble(src, name, pin))
@@ -52,7 +53,7 @@ def build_plugins(pin):
 
 def current_pin():
     """The pin already stamped in the committed build skill (for a no-op regen)."""
-    t = open(os.path.join(ROOT, "plugins/hoistable/skills/build/SKILL.md")).read()
+    t = open(os.path.join(REPO, "plugins/hoistable/skills/build/SKILL.md")).read()
     return json.loads(re.search(r"```json\n(\{.*?\})\n```", t, re.S).group(1))
 
 
