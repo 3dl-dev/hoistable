@@ -83,19 +83,18 @@
   .bar .who{margin-left:.6cqw;font-size:1.15cqw;color:var(--teal-dim);letter-spacing:.02em}
   .bar .stat{margin-left:auto;font-size:1.05cqw;color:#4d6864}
 
-  .body{padding:1.9cqw 2.1cqw 2.1cqw; font-size:1.5cqw; line-height:1.6}
-  .sys{color:#4d6864}
-  .row{margin-top:1.15cqw}
-  .tag{
-    display:inline-block; width:5.9cqw; padding-right:1.2cqw; color:var(--teal-dim);
-    text-transform:lowercase; letter-spacing:.03em;
-  }
-  .tag.you{color:#9db8b3}
-  .you-in{color:var(--cream)}
-  .act{color:var(--teal);text-shadow:0 0 16px rgba(63,214,201,.3)}
-  .dim{color:#6a8480}
-  .up{color:var(--ok); font-weight:600}
-  .honest{color:var(--decline)}
+  .body{padding:1.8cqw 2cqw 1.9cqw; font-size:1.4cqw; line-height:1.5}
+  .q{color:var(--cream); margin-top:1.5cqw}
+  .q:first-child{margin-top:0}
+  .q .p{color:var(--teal); margin-right:.7cqw}
+  .call{color:var(--cream); margin-top:1.25cqw}
+  .call .m{color:var(--teal); margin-right:.7cqw; text-shadow:0 0 12px rgba(63,214,201,.4)}
+  .call .fn{color:var(--teal-bright)}
+  .res{color:#6a8480; margin-top:.3cqw; padding-left:1.1cqw}
+  .res .b{color:#37514d; margin-right:.7cqw}
+  .ok{color:var(--ok)}
+  .warn{color:var(--decline)}
+  .url{color:var(--teal-bright)}
   .cur{
     display:inline-block;width:1cqw;height:1.6cqw;vertical-align:-.25cqw;
     background:var(--teal);margin-left:.3cqw;box-shadow:0 0 10px rgba(63,214,201,.7);
@@ -111,9 +110,9 @@
       <div class="left">
         <div class="eyebrow">Self-host &nbsp;·&nbsp; agent-driven</div>
         <div class="wordmark">hoistable</div>
-        <div class="expand">Run any self-hostable app on your own machine, toy scale to production.</div>
+        <div class="expand">Run any self-hostable app, toy scale to production.</div>
 
-        <div class="kicker">It's glue, not a platform. It hands every runtime and ops call to your coding agent, so an app comes up and stays up. <b>Ship yours as a skill, or grab any app and go.</b></div>
+        <div class="kicker">Loose glue that hands runtime and ops decisions to your coding agent. <b>Ship your product as a skill, or grab any app and run it yourself.</b></div>
         <div class="foot">
           <span class="repo">github.com/3dl-dev/hoistable</span>
           <span class="dot"></span>
@@ -126,18 +125,23 @@
           <div class="bar">
             <span class="led"></span><span class="led"></span><span class="led on"></span>
             <span class="who">hoistable · your session</span>
-            <span class="stat">substrate: resolved live</span>
+            <span class="stat">~/apps/plausible</span>
           </div>
           <div class="body">
-            <div class="sys">// hand your agent any self-hostable app. it makes the runtime &amp; ops calls.</div>
+            <div class="q"><span class="p">&gt;</span>get plausible running here</div>
 
-            <div class="row"><span class="tag you">you</span><span class="you-in">get plausible running here</span></div>
-            <div class="row"><span class="tag">agent</span><span class="act">reads compose</span> <span class="dim">· needs clickhouse · adds it</span></div>
-            <div class="row"><span class="tag"></span><span class="up">up ✓</span> <span class="dim">· toy scale · localhost:8000 · sandboxed</span></div>
+            <div class="call"><span class="m">⏺</span><span class="fn">Read</span>(docker-compose.yml)</div>
+            <div class="res"><span class="b">⎿</span>needs postgres + clickhouse</div>
 
-            <div class="row" style="margin-top:1.7cqw"><span class="tag you">you</span><span class="you-in">now stand it up for real</span></div>
-            <div class="row"><span class="tag">agent</span><span class="act">prod profile</span> <span class="dim">· external pg · tls ·</span> <span class="up">up&nbsp;✓</span></div>
-            <div class="row"><span class="tag"></span><span class="honest">honest: backups not configured yet</span><span class="cur"></span></div>
+            <div class="call"><span class="m">⏺</span><span class="fn">Bash</span>(docker compose up -d)</div>
+            <div class="res"><span class="b">⎿</span>[+] Running 3/3</div>
+            <div class="res"><span class="b">&nbsp;</span><span class="ok">✔</span> plausible-1 &nbsp;Started &nbsp;<span class="url">http://localhost:8000</span></div>
+
+            <div class="q"><span class="p">&gt;</span>now stand it up for real</div>
+
+            <div class="call"><span class="m">⏺</span>prod profile: managed postgres, TLS via caddy</div>
+            <div class="res"><span class="b">⎿</span><span class="ok">✔</span> live &nbsp;<span class="url">https://analytics.acme.dev</span></div>
+            <div class="res"><span class="b">&nbsp;</span><span class="warn">⚠ backups not configured yet</span><span class="cur"></span></div>
           </div>
         </div>
       </div>
