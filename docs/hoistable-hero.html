@@ -66,7 +66,7 @@
   .bar .who{margin-left:.6cqw;font-size:1.15cqw;color:var(--teal-dim);letter-spacing:.02em}
   .bar .stat{margin-left:auto;font-size:1.05cqw;color:#4d6864}
 
-  .body{padding:2cqw 2cqw 2cqw; font-size:1.5cqw; line-height:1.5}
+  .body{padding:1.9cqw 2cqw 1.9cqw; font-size:1.4cqw; line-height:1.5}
   .q{color:var(--cream); margin-top:1.35cqw}
   .q:first-child{margin-top:0}
   .q .p{color:var(--teal); margin-right:.7cqw}
@@ -111,21 +111,20 @@
           <div class="bar">
             <span class="led"></span><span class="led"></span><span class="led on"></span>
             <span class="who">hoistable · your session</span>
-            <span class="stat">~/src/myapp</span>
+            <span class="stat">~/src/hoistable</span>
           </div>
           <div class="body">
-            <div class="q"><span class="p">&gt;</span>get my app running on this box</div>
+            <div class="q"><span class="p">&gt;</span>package this repo into a self-installing skill</div>
 
-            <div class="call"><span class="m">⏺</span>Resolve for this machine</div>
-            <div class="res"><span class="b">⎿</span>needs postgres + a proxy, neither installed here</div>
+            <div class="call"><span class="m">⏺</span><span class="fn">emit_skill</span><span class="arg">(config, pin operators-0.7.0)</span></div>
+            <div class="res"><span class="b">⎿</span><span class="sha">hoistable.SKILL.md</span> · one file, 7.4 KB</div>
+            <div class="res"><span class="b">⎿</span>recipe + a sha-pinned toolchain <span class="arg">(8b1c4b72…)</span></div>
 
-            <div class="call"><span class="m">⏺</span>Bring them up, isolated</div>
-            <div class="res"><span class="b">⎿</span>postgres <span class="ok">✔</span> &nbsp; caddy <span class="ok">✔</span></div>
+            <div class="call"><span class="m">⏺</span>on any box: verify pin · self-extract · deploy · grade</div>
+            <div class="res"><span class="b">⎿</span>preflight FEASIBLE → <span class="ok">BUILT</span> · install gate 1/1</div>
+            <div class="res"><span class="b">⎿</span>transfer <span class="ok">4/4</span> <span class="ok">✔</span> &nbsp;author · envelope · hoist · builder</div>
 
-            <div class="call"><span class="m">⏺</span>Deploy from source, then verify</div>
-            <div class="res"><span class="b">⎿</span>build <span class="ok">✔</span> &nbsp; migrate <span class="ok">✔</span> &nbsp; health <span class="ok">5/5 ✔</span></div>
-
-            <div class="win"><span class="m">⏺</span>Live at <span class="url">https://localhost:8443</span>, ready to use<span class="cur"></span></div>
+            <div class="win"><span class="m">⏺</span>built for hoistable. it just shipped itself.<span class="cur"></span></div>
           </div>
         </div>
       </div>
