@@ -1,6 +1,6 @@
 ---
 name: hoistable
-description: Make an app hoistable — the /hoistable verb, use case 1 (the skill builder), distinct from /hoist. Use when a developer wants to ship their app so anyone's agent can later HOIST it: /hoistable emits one <app>.hoist.SKILL.md that, on first use, self-extracts the hoistable harness and clones, configures, deploys, and grades the app on the receiver's target, reporting an honest transfer score. Agent-first; the output is a skill, never a command.
+description: Make an app hoistable — the /hoistable verb, use case 1 (the skill builder), distinct from /hoist. Use when a developer wants to ship their app so anyone's agent can later hoist it. /hoistable emits one <app>.hoist.SKILL.md that, on first use, self-extracts the hoistable harness and clones, configures, deploys, and grades the app on the receiver's target, reporting an honest transfer score. Agent-first; the output is a skill, never a command.
 ---
 
 ## Get the hoistable toolchain (self-extract, once)
@@ -25,9 +25,9 @@ With the toolchain extracted, follow the method below.
 
 ```json
 {
-  "version": "0.5.0",
+  "sha256": "93c02cedd7bd66a8afcfdd547fc95bb830fe6ce1699ca009917f8551b4200ad5",
   "url": "https://github.com/3dl-dev/hoistable/releases/download/operators-v0.5.0/hoistable-operators-0.5.0.tgz",
-  "sha256": "93c02cedd7bd66a8afcfdd547fc95bb830fe6ce1699ca009917f8551b4200ad5"
+  "version": "0.5.0"
 }
 ```
 
