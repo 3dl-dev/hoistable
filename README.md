@@ -38,7 +38,7 @@ Add a tap and install an app:
 
 Then run it:
 
-    /agent-dyno:hoist
+    /agent-dyno:deploy
 
 The app comes up in a sandbox on your machine, its own tests run there, and you get the score. Nothing you already have running is touched.
 

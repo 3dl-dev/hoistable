@@ -130,7 +130,7 @@ def emit_skill(app_dir_or_config, pin=None, seed_path=SEED, config_name="config.
     description = description or _default_description(app)
 
     with open(seed_path) as f:
-        stamped = f.read().strip().replace("<app>", app)
+        stamped = f.read().strip().replace("<app>", app).replace("<verb>", skill_name)
 
     carried = json.dumps(config, indent=2, sort_keys=True)
     checks = "\n".join(f"- {c.replace('<app>', app)}" for c in CHECKS)

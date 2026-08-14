@@ -99,10 +99,11 @@ class EmitShape(unittest.TestCase):
     def test_emits_one_self_building_skill_with_the_recipe_stamped(self):
         app_dir, _ = _toy_app_dir("toy")
         text = emit.emit_skill(app_dir, FAKE_PIN)
-        # the receiver-side recipe is stamped verbatim, with <app> resolved
-        self.assertIn("This skill hoists toy before it reports toy is up", text)
-        self.assertIn("## Hoist recipe (run before your first report that toy is up)", text)
-        self.assertIn("self-extract the harness", text.lower())
+        # the receiver-side recipe is stamped verbatim, with <app> and <verb> resolved
+        self.assertIn("This skill sets toy up before it reports toy is up", text)
+        self.assertIn("## Recipe (run before your first report that toy is up)", text)
+        self.assertIn("self-extract the runtime", text.lower())
+        self.assertIn("deploy it against", text)      # the neutral verb, not "hoist it"
         # binds, checks, acceptance all present
         self.assertIn("## Binds", text)
         self.assertIn("## Checks", text)
