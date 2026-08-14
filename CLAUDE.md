@@ -1,16 +1,36 @@
 # CLAUDE.md — Hoistable (project standing orders)
 
-Hoistable ships software as a recipe that hoists itself, operated by four agent roles
-(develop, preflight, sysop, petard). The **product** is described in `README.md`
-(thesis + three layers), `docs/build-rules.md` (how the operators get built),
-`docs/contracts.md` (operator interfaces + the substrate handle), and
-`docs/ops-substrate.md` (the operational model + the JIT loop + cost spine).
+Hoistable ships software as a recipe that hoists itself, **agent-first**: the
+distribution channel is *skills*, not commands. `hoist` is a skill an agent invokes,
+and every product Hoistable wraps becomes its own distributable skill. Hoistable is
+both the **skill builder** (it turns an app into a distributable skill) and the
+**framework** that skill carries — develop / preflight / sysop / petard — so the user
+can fully *exploit* the distributed software, not merely install it. Nobody ever reaches
+for `hoist.py`; the Python is neutral-core enforcement behind the skill. The **product**
+is described in `README.md` (thesis + three layers), `docs/operator-model.md`
+(agent-first, the skill channel, operators-as-meta-skills, the three usage modes),
+`docs/build-rules.md` (how the operators get built), `docs/contracts.md` (operator
+interfaces + the substrate handle), and `docs/ops-substrate.md` (the operational model
++ the JIT loop + cost spine).
 
 This file is the **operating posture**: how to *think* while building Hoistable. It
 exists because the same corrections kept being needed. Internalize these and you will
 not need steering; the shape is fundamental, not stylistic.
 
 ## The fundamental shape
+
+0. **Agent-first — the skill is the product; the CLI is not.** The distribution channel
+   is *skills*, consumed by agents. Nobody runs `hoist.py`, ever — an agent invokes the
+   *hoist skill*, and every product Hoistable wraps becomes its own distributable skill
+   (that is the channel: a skill builder whose output is a skill). The stdlib Python
+   (`envelope.py`, `hoist.py`, the operators' helpers) is neutral-core *enforcement* the
+   skill's agent calls, never a user-facing command line. When you catch yourself
+   "proving" the product by running a `.py` at a shell, you are testing the core as a
+   *builder* — legitimate for grading, but not the product surface; the product is the
+   skill an agent invokes. Hoistable is two things: the **skill builder** (an app → its
+   own distributable skill) and the **operator framework** (develop / preflight / sysop /
+   petard) delivered *through* that skill so users can fully exploit the software, not
+   merely install it. The three usage modes are in `docs/operator-model.md`.
 
 1. **You are the operator.** develop / preflight / sysop / petard are agent *roles*,
    not programs. When you deploy, you *are* sysop; when you extend, you *are* develop.
@@ -67,6 +87,11 @@ not need steering; the shape is fundamental, not stylistic.
   → stop: separate built-and-tested from designed, out loud, every time.
 - Reaching for `rd` (or any of our tools) as part of the *product* → stop: ours, not
   Hoistable's.
+- Framing the CLI / `hoist.py` as the product surface, or "proving" the product by
+  running a `.py` at a shell → stop: nobody reaches for commands, the channel is skills,
+  agent-first. The Python is neutral-core enforcement *behind* the skill; the skill an
+  agent invokes is the interface. (This is the drift that keeps happening after a
+  context reset — re-read principle 0.)
 - Labeling a rung or result with a strength/guarantee it did not earn → stop:
   honest-weaker beats dishonest-strong. Grade it, then label what you measured, and do
   not wire an unearned rung into the resolvable set.

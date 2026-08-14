@@ -16,6 +16,9 @@ frozen truth.
 
     python3 -m unittest discover -s tests -p "test_*.py"    # last run: 40 passed
 
+These are **builder** checks — you invoking the neutral core to grade it. They are not
+the product surface: agent-first, users invoke the hoist *skill*, never a `.py`.
+
 End-to-end proofs, all re-runnable (see git history for the exact demo commands):
 - `python3 hoist/hoist.py agent-dyno --target-dir <tmp>`  -> BUILT 2/2 (by name via index.json)
 - hoist hoistable's own config (examples/hoistable/config.json) -> BUILT 6/6 (self-hosting)
@@ -27,7 +30,8 @@ End-to-end proofs, all re-runnable (see git history for the exact demo commands)
 
 - `envelope/envelope.py` -- the neutral grader + enforced invariants (isolation,
   no-silent-success, blast-radius). The load-bearing safety code.
-- `hoist/` -- the entry point: `hoist.py` (drive + discovery + pin resolution),
+- `hoist/` -- the neutral core the **hoist skill** calls (the entry point is the skill,
+  not these files): `hoist.py` (config discovery + pin resolution + the enforced pass),
   `pins.py` (fetch+verify+extract a pinned operator kit), `author.py` (draft a config;
   a reference helper, the real authoring is the agent's job).
 - `operators/{develop,preflight,sysop,petard}/` -- SKILL.md method (skill-primary) plus,

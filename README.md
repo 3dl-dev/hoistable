@@ -10,21 +10,29 @@ clones the repo, runs the configuration, does the deployment, and fills the Pare
 long-tail gaps that used to make distribution expensive. You ship the recipe, and
 the software pulls itself up by its own bootstraps.
 
-## hoist: the one command
+This is **agent-first**. The channel is skills, consumed by agents — an agent invokes
+the skill, so no one is left reaching for a command line. Every product Hoistable wraps
+becomes its own distributable skill, and Hoistable is both the **skill builder** that
+produces it and the operator **framework** (develop / preflight / sysop / petard) that
+skill carries, so users can fully *exploit* the software, not merely install it.
 
-`hoist` is the entry point, and the mental model is Homebrew. `hoist <app>` finds
-that app's hoistable config the way `brew` finds a formula, and takes you to a
-running system. It works in two modes:
+## hoist: the skill you invoke
 
-- **The app is already distributed hoistably.** `hoist` finds its config through an
-  index, a GitHub URL, or a web search, and runs it. This is `brew install`.
-- **The app is not distributed hoistably.** `hoist` builds the config for you and
-  makes *you* the author of that app's Layer 2. This is writing the formula, done
-  with you instead of by you.
+`hoist` is a **skill an agent invokes** — the mental model is Homebrew, but agent-first,
+never a command you type. You point it at an app and it takes you to a running, graded
+system. It works in two modes:
 
-Either path ends at a deployed, operable system. That is what covers both audiences
-at once: developers who want a way to distribute their software, and users who want
-to run software no developer ever distributed hoistably.
+- **The app is already distributed hoistably.** hoist finds its config the way `brew`
+  finds a formula — through an index, a GitHub URL, or a web search — and runs it. This
+  is `brew install`.
+- **The app is not distributed hoistably.** hoist builds the config *with* you and makes
+  *you* the author of that app's Layer 2. This is writing the formula, done with you
+  instead of by you.
+
+Either path ends at a deployed, operable system. That covers both audiences at once:
+developers who want a way to distribute their software (as a skill), and users who want
+to run software no developer ever distributed hoistably. Nobody reaches for a command
+line; an agent runs the skill.
 
 ## The three layers
 
@@ -132,10 +140,11 @@ resolves to the same operators every time. Isolation still holds, because upgrad
 Layer 0 does not touch a config until its owner chooses to bump the pin. There is one
 pinned version line, not one per operator.
 
-A `SKILL.md` is the Claude Code adapter of this channel, not the whole of it. The
-neutral core is a self-contained recipe that hoists; other harnesses package it their
-own way. Operators load as skills under Claude Code; the same method ports behind a
-thin per-harness adapter.
+`SKILL.md` is this skill in its Claude Code form; the same method ports to other
+*agent* harnesses behind a thin adapter. The channel is always a skill an agent
+invokes, never a command line. The neutral core (`envelope.py`) is the small stdlib
+code the skill's agent calls to *enforce* the invariants — isolation, honest grade,
+teardown — enforcement behind the skill, not a driver anyone runs.
 
 Hoistable is its own first consumer: it distributes its operators as skills, and the
 petard ships inside the config while its execution path stays frontier-independent.

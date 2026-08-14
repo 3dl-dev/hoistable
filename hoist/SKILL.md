@@ -3,8 +3,9 @@ name: hoist
 description: Onboard an app as a running, graded system from its hoistable config, or author that config for an app that has none. The brew of hoistable. Drives the whole flow and never leaves the user at a blank prompt.
 ---
 
-hoist is the entry point. `hoist <app>` gets the user to a running, graded system,
-whether or not the app was ever distributed hoistably.
+hoist is a skill you (the agent) run. Point it at an app and get the user to a running,
+graded system, whether or not the app was ever distributed hoistably. This is
+agent-first: you do the work in-loop; the user never touches a command line.
 
 ## Two modes
 
@@ -21,17 +22,20 @@ Either way you reach a deployed, graded system, or an honest reason you did not.
 
 ## Drive, never a blank prompt
 
-Onboarding is driven, not a menu. hoist takes the wheel:
+Onboarding is driven, not a menu. You take the wheel; the user never sees a prompt with
+nothing to do:
 
-1. Resolve the config (discovery above; `hoist/hoist.py` implements the local-path
-   case, and the index and URL are its extension points).
-2. **Know early.** Run preflight first, which deploys nothing:
-   `python3 envelope/envelope.py <config> --until preflight`. If it says cannot-build,
-   stop at the door and give the user the named reason.
-3. **Deploy and grade.** If feasible, run the full pass. `python3 hoist/hoist.py <config>`
-   sequences both. Report the honest outcome: built, honest-failure (say what did not
-   transfer), or cannot-build.
-4. Hand off to the operators the config includes: develop, sysop, petard.
+1. **Resolve the config** — discovery above. (The neutral core `hoist/hoist.py` carries
+   the local-path resolver; index and URL are its extension points. You call the core;
+   you never leave that to the user.)
+2. **Know early.** Run preflight first, which deploys nothing — invoke the neutral-core
+   grader in preflight-only mode (`envelope.py --until preflight`). If it says
+   cannot-build, stop at the door and give the user the named reason.
+3. **Deploy and grade.** If feasible, run the full pass, invoking the neutral-core grader
+   (`envelope.py`), which *enforces* isolation, the honest transfer grade, and teardown.
+   Report the honest outcome: built, honest-failure (say what did not transfer), or
+   cannot-build.
+4. **Hand off** to the operators the config includes: develop, sysop, petard.
 
 ## Invariants hoist carries
 
@@ -43,8 +47,10 @@ Onboarding is driven, not a menu. hoist takes the wheel:
 - **Pinned operators.** The config pins operator versions by URL from the Layer 0
   release, so the same config resolves the same operators every time.
 
-## Neutral core vs this adapter
+## The skill is the channel; the core enforces
 
-This SKILL.md is the Claude Code adapter. The neutral core is `envelope.py` plus
-`hoist.py` (standard library, no harness assumptions) and the config schema. Another
-harness packages the same driver its own way.
+This `SKILL.md` is the hoist skill in its Claude Code form; the same method ports to
+other *agent* harnesses behind a thin adapter — the channel is a skill an agent runs,
+never a command line. The neutral core is `envelope.py` plus `hoist.py` (standard
+library, no harness assumptions) and the config schema: the small code you call to
+*enforce* the invariants, not a driver a user runs.
