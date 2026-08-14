@@ -39,7 +39,7 @@ Skill descriptions are quoted in the frontmatter so a colon cannot break the YAM
 
 ## Re-cut a release
 
-1. Build the kit: `release/build_release.py` gives `hoistable-operators-<v>.tgz` (harness plus builder plus release tooling).
+1. Build the kit: `core/release/build_release.py` gives `hoistable-operators-<v>.tgz` (harness plus builder plus release tooling).
 2. Publish it: `gh release create operators-v<v> <tgz> --repo 3dl-dev/hoistable`.
-3. Re-emit each plugin skill pinned to it: `emit.py <app-config> --kit <tgz> --kit-url <release-asset-url>`, and re-assemble the tool skills from `builder/SKILL.md` and `hoist/SKILL.md`.
+3. Regenerate the tool plugins pinned to it: `core/release/build_plugins.py --pin <pin.json>` (single source; never hand-edit `plugins/`). Re-emit each registry app skill with `core/builder/emit.py --kit <tgz> --kit-url <release-asset-url>`.
 4. Bump the versions in both `marketplace.json` files, commit, and push.
