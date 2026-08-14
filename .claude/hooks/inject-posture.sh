@@ -16,7 +16,16 @@ grep -q "Hoistable (project standing orders)" "$ROOT/CLAUDE.md" 2>/dev/null || e
 read -r -d '' POSTURE <<'EOF' || true
 ## Hoistable operating posture (hold this through compaction; full text in CLAUDE.md)
 
-Compaction may have summarized CLAUDE.md away. The SHAPE is fundamental, not stylistic:
+Compaction may have summarized CLAUDE.md away. The SHAPE is fundamental, not stylistic.
+
+FIRST, the one that keeps drifting after a reset: WE DISTRIBUTE A *SKILL*, NOT CODE. The
+skill does the work in the RECEIVER's session; iterating that skill until it is grounded,
+correct, and accurate is the job, and you own it. Code exists only to optimize
+deterministic operations invariant across the solution space (arithmetic, checksums, the
+enforced order). Code NEVER accomplishes the task. Writing software to do the work instead
+of a skill that has the receiver's agent do the work = you have left the product.
+
+Then the rest of the shape:
 
 - You ARE the operator. develop/preflight/sysop/petard are agent roles, not programs.
   The loop is a skill you RUN, not a script to build -- "manual" and "automated" are

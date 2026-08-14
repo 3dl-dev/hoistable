@@ -1,5 +1,14 @@
 # CLAUDE.md, Hoistable (project standing orders)
 
+> **We distribute a *skill*, not code.** The skill does everything we outline, and it
+> does it in the *receiver's* session. The skill is the product; iterating it until it is
+> grounded, correct, and accurate is your job, and you own that. Code exists only to
+> optimize the deterministic operations the skill leans on, ones invariant across the
+> solution space: arithmetic, checksums, the enforced order. Code never *accomplishes the
+> task*. The instant you are writing software to do the work instead of a skill that has
+> the receiver's agent do the work, you have left the product. This is the drift that
+> keeps recurring after a reset. Re-read this line first.
+
 Hoistable ships software as a recipe that hoists itself, **agent-first**: the
 distribution channel is *skills*, not commands. `hoist` is a skill an agent invokes,
 and every product Hoistable wraps becomes its own distributable skill. Hoistable is
