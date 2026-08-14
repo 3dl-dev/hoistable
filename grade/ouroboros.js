@@ -1,6 +1,6 @@
 export const meta = {
   name: 'ouroboros',
-  description: 'The loss function. A setup agent emits each app skill; then a fresh receiver agent, given ONLY the skill (no repo), self-extracts the harness, hoists the app on a real target, and grades it. The honest transfer over that whole tower is the loss. This is the product grade, up-altitude, and it outranks the .py mechanics suite.',
+  description: 'The loss function. Emit each app skill pinned to the PUBLISHED operators release, then a fresh receiver agent, given ONLY the skill (no repo), fetches that published kit, self-extracts it, and hoists the app on a real target. It grades the shipped artifact end to end, never local code. The honest transfer over that whole tower is the loss, up-altitude, outranking the .py mechanics suite.',
   phases: [
     { title: 'Emit', detail: 'build a kit and emit each app skill into a clean dir' },
     { title: 'Grade', detail: 'a fresh receiver agent grades each skill with no repo access' }
@@ -64,20 +64,21 @@ function receiverPrompt(app, skillPath) {
 phase('Emit')
 const setup = await agent(
   [
-    'In ' + REPO + ": build a fresh operator kit and emit each app's skill so a receiver can grade it.",
+    'In ' + REPO + ": emit each app's skill so a receiver grades the PUBLISHED ARTIFACT, not local code.",
     'Apps: ' + JSON.stringify(APPS) + '.',
     'Steps:',
-    '1. Pick a fresh work dir under /tmp (call it <work>). Build the toolchain kit:',
-    "   python3 -c \"import sys;sys.path.insert(0,'core/release');import build_release;print(build_release.build('grade','<work>/kit',['envelope','hoist','operators','builder','release']))\"",
-    '2. Derive a resolvable pin from that kit with core/builder/emit.py pin_for_kit (a file:// URL to',
-    '   the kit path is fine; the receivers run on this machine).',
-    '3. For each app, emit its skill with core/builder/emit.py emit_skill(config, pin) and write it to',
-    '   <work>/<app>/<app>.SKILL.md. Configs:',
-    '   - agent-dyno: ~/projects/agent-dyno/hoist/config.json, but OVERRIDE source.clone to',
-    '     https://github.com/3dl-dev/agent-dyno.git',
+    '1. Read the PUBLISHED operators pin from the committed plugin: the fenced json block in',
+    '   plugins/hoistable/skills/build/SKILL.md carries version, url, sha256. That url is the',
+    '   release a stranger actually fetches. Use that pin as-is; do NOT build a local kit.',
+    '2. Pick a fresh work dir under /tmp (call it <work>).',
+    '3. For each app, emit its skill with core/builder/emit.py emit_skill(config, pin) using that',
+    '   PUBLISHED pin, writing it to <work>/<app>/<app>.SKILL.md. Configs:',
+    '   - agent-dyno: ~/projects/agent-dyno/hoist/config.json, but OVERRIDE source.clone to the',
+    '     public https://github.com/3dl-dev/agent-dyno.git',
     '   - honcho: ' + REPO + '/examples/honcho/config.json',
     '   - hoistable: ' + REPO + '/examples/hoistable/config.json',
-    'Return work_dir and, for each app, its emitted skill_path.'
+    'Return work_dir and each app skill_path. Receivers fetch the published kit from the pin url,',
+    'so this grades the shipped artifact end to end, never local code.'
   ].join('\n'),
   { schema: SETUP_SCHEMA, phase: 'Emit', label: 'emit-skills' }
 )

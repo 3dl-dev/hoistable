@@ -4,6 +4,11 @@ The objective is not the `.py` suite. It is the ouroboros: a fresh agent, given 
 emitted skill, self-extracts the harness, hoists the app on a real target in a real
 session, and grades it. The honest transfer over that whole tower is the loss.
 
+The skill pins the **published** operators release, and the receiver fetches those exact
+bytes from GitHub. So this tests the shipped artifact, not the local source. "We are just
+running our local code" is the confound this exists to kill: a green suite on local code
+is not the thing a stranger installs.
+
 Run it:
 
     Workflow({ scriptPath: "grade/ouroboros.js" })                          # agent-dyno, honcho, hoistable
