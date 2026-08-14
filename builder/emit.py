@@ -97,11 +97,19 @@ def _acceptance_section(profile):
     return "\n".join(lines) or "- (none declared, the recipe transfers nothing to grade)"
 
 
-def emit_skill(app_dir_or_config, pin=None, seed_path=SEED, config_name="config.json"):
-    """Assemble the self-building hoist skill text for an app. `app_dir_or_config` is a
+def emit_skill(app_dir_or_config, pin=None, seed_path=SEED, config_name="config.json",
+               skill_name=None, description=None):
+    """Assemble the self-building skill text for an app. `app_dir_or_config` is a
     directory holding config.json, or a path to a config file. `pin` is
     {version, url, sha256}; when given it is injected so the carried recipe is
-    self-pinning. Deterministic: identical inputs -> identical bytes."""
+    self-pinning. Deterministic: identical inputs -> identical bytes.
+
+    `skill_name` and `description` let the DEVELOPER brand the output as their own
+    product. The result is the developer's, not ours: they choose the name their users
+    invoke and the words their users read. Defaults carry none of our naming (no
+    "hoist", no "hoistable"), so a developer who does nothing still ships something
+    app-first, with us invisible. Our own conventions (e.g. a `hoist` skill name in our
+    tap) are just callers passing those values in."""
     path = app_dir_or_config
     if os.path.isdir(path):
         path = os.path.join(path, config_name)
@@ -111,6 +119,11 @@ def emit_skill(app_dir_or_config, pin=None, seed_path=SEED, config_name="config.
         config["operators"] = pin                       # pin, do not vendor
     app = config.get("app", "app")
     _, profile = _default_profile(config)
+    skill_name = skill_name or "deploy"                 # the dev's verb; never forced to ours
+    description = description or (
+        f"Set up and run {app} on this machine, then self-test it and report honestly "
+        f"what worked. Ships as a recipe: on first use it fetches a verified toolchain, "
+        f"brings {app} up in a sandbox, and grades it.")
 
     with open(seed_path) as f:
         stamped = f.read().strip().replace("<app>", app)
@@ -120,10 +133,8 @@ def emit_skill(app_dir_or_config, pin=None, seed_path=SEED, config_name="config.
 
     parts = [
         "---",
-        f"name: hoist-{app}",
-        (f"description: Hoist {app} onto your target, on first use, self-extract the "
-         f"hoistable harness and clone, configure, deploy, and grade {app}, reporting an "
-         f"honest transfer score. Agent-first; no commands."),
+        f"name: {skill_name}",
+        f"description: {description}",
         "---",
         "",
         stamped,

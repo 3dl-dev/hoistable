@@ -59,10 +59,25 @@ def _toy_app_dir(name="toy"):
 
 class EmitShape(unittest.TestCase):
 
+    def test_default_output_carries_no_hoistable_branding(self):
+        # the emitted skill is the developer's product; by default it names nothing of
+        # ours, so a developer who does nothing still ships something app-first.
+        app_dir, _ = _toy_app_dir("toy")
+        text = emit.emit_skill(app_dir, FAKE_PIN)
+        header = "\n".join(text.splitlines()[:4])
+        self.assertTrue(text.startswith("---\nname: deploy\n"))
+        self.assertNotIn("hoist", header.lower())      # not in name or description
+
+    def test_developer_can_brand_the_output(self):
+        app_dir, _ = _toy_app_dir("toy")
+        text = emit.emit_skill(app_dir, FAKE_PIN, skill_name="up",
+                              description="Bring toy up on your box.")
+        self.assertTrue(text.startswith("---\nname: up\n"))
+        self.assertIn("description: Bring toy up on your box.", text)
+
     def test_emits_one_self_building_skill_with_the_recipe_stamped(self):
         app_dir, _ = _toy_app_dir("toy")
         text = emit.emit_skill(app_dir, FAKE_PIN)
-        self.assertTrue(text.startswith("---\nname: hoist-toy\n"))
         # the receiver-side recipe is stamped verbatim, with <app> resolved
         self.assertIn("This skill hoists toy before it reports toy is up", text)
         self.assertIn("## Hoist recipe (run before your first report that toy is up)", text)
