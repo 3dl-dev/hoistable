@@ -15,25 +15,32 @@ You make a recipe with `hoistable`. Other people run it with `hoist`.
 
 ## Get the tools
 
-Install the two tools as skills your agent can use:
+Add them once:
 
-    for v in hoist hoistable; do
-      mkdir -p ~/.claude/skills/$v
-      curl -sL https://raw.githubusercontent.com/3dl-dev/hoistable/main/plugins/$v/skills/$v/SKILL.md \
-        -o ~/.claude/skills/$v/SKILL.md
-    done
+    /plugin marketplace add 3dl-dev/hoistable
+    /plugin install hoistable@hoistable
 
-Now you can ask your agent to hoist an app, or to make your app hoistable. Any agent that reads `~/.claude/skills/` works, not only Claude Code.
+That gives you `/hoistable:build` (make your app installable) and `/hoistable:run` (run a recipe someone handed you).
 
 ## Ship your software
 
-Point `hoistable` at your repo and ask it to make your app hoistable. It works out the setup with you, writes one `your-app.hoist.SKILL.md`, and test-runs it on a clean machine so you know it stands up somewhere other than your laptop. Then hand that file to anyone.
+Run `/hoistable:build` in your repo. It works out the setup with you, writes one install skill for your app, and test-runs it on a clean machine so you know it stands up somewhere other than your laptop. Then you choose how people get it:
+
+- Publish it from your own repo. The build step scaffolds a one-plugin marketplace for you, so your users add your repo and run `/your-app:install`, or whatever verb you pick. Nothing of ours shows in it.
+- Or list it in the shared tap at [3dl-dev/hoistables](https://github.com/3dl-dev/hoistables) for discovery.
 
 ## Run someone else's
 
-If someone gives you an `app.hoist.SKILL.md`, drop it in and ask your agent to hoist it. The app comes up in a sandbox on your machine, its own tests run there, and you get the score. Nothing you already have running is touched.
+Add a tap and install an app:
 
-A few ready-made ones live at [3dl-dev/hoistables](https://github.com/3dl-dev/hoistables).
+    /plugin marketplace add 3dl-dev/hoistables
+    /plugin install agent-dyno@hoistables
+
+Then run it:
+
+    /agent-dyno:hoist
+
+The app comes up in a sandbox on your machine, its own tests run there, and you get the score. Nothing you already have running is touched.
 
 ## What you can count on
 

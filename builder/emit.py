@@ -97,6 +97,13 @@ def _acceptance_section(profile):
     return "\n".join(lines) or "- (none declared, the recipe transfers nothing to grade)"
 
 
+def _default_description(app):
+    """The app-first default, carrying none of our naming."""
+    return (f"Set up and run {app} on this machine, then self-test it and report "
+            f"honestly what worked. Ships as a recipe: on first use it fetches a "
+            f"verified toolchain, brings {app} up in a sandbox, and grades it.")
+
+
 def emit_skill(app_dir_or_config, pin=None, seed_path=SEED, config_name="config.json",
                skill_name=None, description=None):
     """Assemble the self-building skill text for an app. `app_dir_or_config` is a
@@ -120,10 +127,7 @@ def emit_skill(app_dir_or_config, pin=None, seed_path=SEED, config_name="config.
     app = config.get("app", "app")
     _, profile = _default_profile(config)
     skill_name = skill_name or "deploy"                 # the dev's verb; never forced to ours
-    description = description or (
-        f"Set up and run {app} on this machine, then self-test it and report honestly "
-        f"what worked. Ships as a recipe: on first use it fetches a verified toolchain, "
-        f"brings {app} up in a sandbox, and grades it.")
+    description = description or _default_description(app)
 
     with open(seed_path) as f:
         stamped = f.read().strip().replace("<app>", app)
@@ -159,6 +163,45 @@ def emit_skill(app_dir_or_config, pin=None, seed_path=SEED, config_name="config.
         "",
     ]
     return "\n".join(parts)
+
+
+def scaffold_marketplace(out_dir, app_config, pin, *, marketplace_name, owner=None,
+                         plugin_name=None, skill_name=None, description=None,
+                         config_name="config.json"):
+    """Write a ready-to-push, single-plugin marketplace so a developer can self-host
+    their app's install skill from their own repo, branded entirely as theirs. Writes:
+
+        out_dir/.claude-plugin/marketplace.json
+        out_dir/plugins/<plugin>/.claude-plugin/plugin.json
+        out_dir/plugins/<plugin>/skills/<skill>/SKILL.md
+
+    Their users then run `/plugin marketplace add <their-repo>` and invoke
+    `/<plugin>:<skill>`. Nothing of ours appears in it: plugin, skill, and description
+    all default app-first and are theirs to set. Returns the `/<plugin>:<skill>`
+    invocation string their users will type."""
+    cfg = app_config if not os.path.isdir(app_config) else os.path.join(app_config, config_name)
+    app = json.load(open(cfg)).get("app", "app")
+    plugin_name = plugin_name or app
+    skill_name = skill_name or "deploy"
+    description = description or _default_description(app)
+    text = emit_skill(app_config, pin, skill_name=skill_name, description=description,
+                     config_name=config_name)
+    pdir = os.path.join(out_dir, "plugins", plugin_name)
+    os.makedirs(os.path.join(pdir, "skills", skill_name), exist_ok=True)
+    os.makedirs(os.path.join(pdir, ".claude-plugin"), exist_ok=True)
+    os.makedirs(os.path.join(out_dir, ".claude-plugin"), exist_ok=True)
+    with open(os.path.join(pdir, "skills", skill_name, "SKILL.md"), "w") as f:
+        f.write(text)
+    with open(os.path.join(pdir, ".claude-plugin", "plugin.json"), "w") as f:
+        json.dump({"name": plugin_name, "description": description}, f, indent=2)
+    market = {"name": marketplace_name, "description": f"Install and run {app}.",
+              "plugins": [{"name": plugin_name, "source": f"./plugins/{plugin_name}",
+                          "description": description, "version": "0.1.0"}]}
+    if owner:
+        market["owner"] = owner
+    with open(os.path.join(out_dir, ".claude-plugin", "marketplace.json"), "w") as f:
+        json.dump(market, f, indent=2)
+    return f"/{plugin_name}:{skill_name}"
 
 
 def extract_config(skill_text):

@@ -1,4 +1,4 @@
 {
   "name": "hoistable",
-  "description": "The builder verb \u2014 /hoistable: make your app into a self-building distributable hoist skill (self-extracts the toolchain, emits <app>.hoist.SKILL.md, graded over the whole stack)."
+  "description": "The Hoistable tools. build turns your app into a self-installing skill; run installs and grades one."
 }

@@ -4,18 +4,12 @@
     "name": "Chris Baron",
     "email": "baron@3dl.dev"
   },
-  "description": "Self-hoisting software as skills, agent-first. Two verbs: hoistable makes an app into a distributable hoist skill; hoist runs a distributable into a running, graded environment.",
+  "description": "Hoistable: turn your app into a self-installing skill, and run ones other people made.",
   "plugins": [
     {
       "name": "hoistable",
       "source": "./plugins/hoistable",
-      "description": "The builder verb — /hoistable. Make your app into a self-building distributable hoist skill: self-extract the toolchain, then emit <app>.hoist.SKILL.md, graded over the whole stack. What someone later hoists.",
-      "version": "0.5.0"
-    },
-    {
-      "name": "hoist",
-      "source": "./plugins/hoist",
-      "description": "The deploy verb — /hoist. Run a distributable (a config, or an <app>.hoist.SKILL.md) into a running, graded environment on your target. Self-extracts the enforced harness; deploys non-destructively and grades honestly.",
+      "description": "build a self-installing skill for your app (/hoistable:build); run one someone made (/hoistable:run).",
       "version": "0.5.0"
     }
   ]

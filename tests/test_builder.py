@@ -75,6 +75,20 @@ class EmitShape(unittest.TestCase):
         self.assertTrue(text.startswith("---\nname: up\n"))
         self.assertIn("description: Bring toy up on your box.", text)
 
+    def test_scaffold_marketplace_is_self_host_ready_and_unbranded(self):
+        app_dir, _ = _toy_app_dir("toy")
+        out = tempfile.mkdtemp(prefix="scaffold-")
+        inv = emit.scaffold_marketplace(out, app_dir, FAKE_PIN, marketplace_name="mytap",
+                                       plugin_name="toy", skill_name="up",
+                                       description="Bring toy up.")
+        self.assertEqual(inv, "/toy:up")                 # what their users type
+        mkt = json.load(open(os.path.join(out, ".claude-plugin", "marketplace.json")))
+        self.assertEqual(mkt["name"], "mytap")
+        self.assertEqual(mkt["plugins"][0]["name"], "toy")
+        skill = open(os.path.join(out, "plugins", "toy", "skills", "up", "SKILL.md")).read()
+        self.assertTrue(skill.startswith("---\nname: up\n"))
+        self.assertNotIn("hoist", "\n".join(skill.splitlines()[:4]).lower())
+
     def test_emits_one_self_building_skill_with_the_recipe_stamped(self):
         app_dir, _ = _toy_app_dir("toy")
         text = emit.emit_skill(app_dir, FAKE_PIN)

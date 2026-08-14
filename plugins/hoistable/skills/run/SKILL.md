@@ -1,5 +1,5 @@
 ---
-name: hoist
+name: run
 description: Onboard an app as a running, graded system from its hoistable config, or author that config for an app that has none. The brew of hoistable. Drives the whole flow and never leaves the user at a blank prompt.
 ---
 

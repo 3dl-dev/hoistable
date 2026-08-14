@@ -75,6 +75,29 @@ the developer**. Do not guess the boundary.
    skills folder, a repo's `.claude/skills/`, a release. A receiver installs it and their
    agent invokes it; on first use it self-extracts and hoists, agent-first.
 
+## Ship it yourself, out of band
+
+The skill you emit is the developer's product, not ours. Nothing forces our name into
+it: the plugin name, the skill name, and the description are the developer's to set, and
+the defaults are app-first (a plain `deploy` verb, "Set up and run <app>..."), so a
+developer who does nothing still ships something with us invisible.
+
+Two ways a developer ships what you built:
+
+1. **List with the `hoistables` tap** for brew-style discovery and updates. Opt in, our
+   name shows there.
+2. **Self-host from their own repo, unbranded.** Hand them a ready-to-push marketplace in
+   one call: `emit.scaffold_marketplace(out_dir, app_config, pin, marketplace_name=...,
+   plugin_name=..., skill_name=..., description=...)`. It writes a
+   `.claude-plugin/marketplace.json` and `plugins/<plugin>/skills/<skill>/SKILL.md` under
+   `out_dir`. They push that repo; their users run `/plugin marketplace add their/repo`
+   and invoke `/<plugin>:<skill>`. They pick every name, so their users see
+   `/their-app:up`, or whatever they chose, with nothing of ours in it.
+
+The only thing pinned to us is the harness release URL. A developer who wants to depend on
+nothing of ours builds their own harness kit (`release/build_release.py`) and passes its
+URL as the pin (`emit --kit <tgz> --kit-url <their-url>`).
+
 ## The recursion
 
 Hoistable is its own first consumer here too: the builder emits **hoistable's own** hoist
