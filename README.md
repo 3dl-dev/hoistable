@@ -61,7 +61,7 @@ For depth: `docs/operator-model.md` (the modes and the operators), `docs/contrac
 
 Working core, graded against real infrastructure rather than mocks.
 
-Built and tested: the honest-grade envelope; isolation as a resolved bind, with three rungs the loop authored itself — `dind` (throwaway container), `k3s` (cluster), and `systemd` (confined); the four operators; `hoist` and `hoistable`; and the marketplace, with honcho and agent-dyno hoisting to a clean score end to end. A weaker model on a different harness (OpenCode driving a local Qwen) installs and self-extracts the skill; driving that model all the way to a graded deploy is still open.
+Built and tested: the honest-grade envelope; isolation as a resolved bind, with three rungs the loop authored itself — `dind` (throwaway container), `k3s` (cluster), and `systemd` (confined); the four operators; `hoist` and `hoistable`; and the marketplace, with agent-dyno hoisting to a clean score end to end and a third-party compose service hoisting non-destructively in a sandbox. A weaker model on a different harness (OpenCode driving a local Qwen) installs and self-extracts a skill; driving that model all the way to a graded deploy is still open.
 
 Designed, not built (see `docs/ops-substrate.md`): the resolver strength model, the cost spine (estimate, reconcile, no silent spend), and building infrastructure up from a bare machine.
 </content>
