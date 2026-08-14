@@ -66,7 +66,7 @@
   .bar .who{margin-left:.6cqw;font-size:1.15cqw;color:var(--teal-dim);letter-spacing:.02em}
   .bar .stat{margin-left:auto;font-size:1.05cqw;color:#4d6864}
 
-  .body{padding:1.9cqw 2cqw 1.9cqw; font-size:1.4cqw; line-height:1.5}
+  .body{padding:1.7cqw 2cqw 1.7cqw; font-size:1.34cqw; line-height:1.46}
   .q{color:var(--cream); margin-top:1.35cqw}
   .q:first-child{margin-top:0}
   .q .p{color:var(--teal); margin-right:.7cqw}
@@ -76,6 +76,8 @@
   .call .arg{color:var(--faint)}
   .res{color:var(--faint); margin-top:.28cqw; padding-left:1.1cqw}
   .res .b{color:#37514d; margin-right:.7cqw}
+  .sub{color:var(--faint); margin-top:.26cqw; padding-left:2.4cqw; font-size:.82em}
+  .kw{color:var(--cream)}
   .ok{color:var(--ok)}
   .warn{color:var(--warn)}
   .sha{color:var(--cream)}
@@ -111,20 +113,21 @@
           <div class="bar">
             <span class="led"></span><span class="led"></span><span class="led on"></span>
             <span class="who">hoistable · your session</span>
-            <span class="stat">~/src/hoistable</span>
+            <span class="stat">~/apps/mnemo</span>
           </div>
           <div class="body">
-            <div class="q"><span class="p">&gt;</span>package this repo into a self-installing skill</div>
+            <div class="q"><span class="p">&gt;</span>hoist mnemo on this box <span class="arg">(a repo we've never packaged)</span></div>
 
-            <div class="call"><span class="m">⏺</span><span class="fn">emit_skill</span><span class="arg">(config, pin operators-0.7.0)</span></div>
-            <div class="res"><span class="b">⎿</span><span class="sha">hoistable.SKILL.md</span> · one file, 7.4 KB</div>
-            <div class="res"><span class="b">⎿</span>recipe + a sha-pinned toolchain <span class="arg">(8b1c4b72…)</span></div>
+            <div class="call"><span class="m">⏺</span>preflight <span class="arg">· deploys nothing</span></div>
+            <div class="res"><span class="b">⎿</span><span class="kw">FEASIBLE</span> · substrate dind / environmental</div>
 
-            <div class="call"><span class="m">⏺</span>on any box: verify pin · self-extract · deploy · grade</div>
-            <div class="res"><span class="b">⎿</span>preflight FEASIBLE → <span class="ok">BUILT</span> · install gate 1/1</div>
-            <div class="res"><span class="b">⎿</span>transfer <span class="ok">4/4</span> <span class="ok">✔</span> &nbsp;author · envelope · hoist · builder</div>
+            <div class="call"><span class="m">⏺</span>deploy in isolation, then grade</div>
+            <div class="res"><span class="b">⎿</span>install gate 3/3 · database <span class="ok">✔</span> · redis <span class="ok">✔</span> · api <span class="ok">✔</span></div>
+            <div class="res"><span class="b">⎿</span>transfer <span class="ok">3/3</span> <span class="ok">✔</span></div>
+            <div class="sub">health-reports-ok · openapi-served · workspace-crud-roundtrip</div>
+            <div class="res"><span class="b">⎿</span>blast radius clean · no residue on host</div>
 
-            <div class="win"><span class="m">⏺</span>built for hoistable. it just shipped itself.<span class="cur"></span></div>
+            <div class="win"><span class="m">⏺</span><span class="ok">BUILT</span> for mnemo.<span class="cur"></span></div>
           </div>
         </div>
       </div>

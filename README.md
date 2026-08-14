@@ -1,6 +1,6 @@
 # Hoistable
 
-![hoistable: package a repo into a self-installing skill that verifies, deploys, and grades itself on any box](docs/hoistable-hero-anim.png)
+![hoistable: hand your coding agent any self-hostable app and it brings it up in isolation, proves it with real checks, and leaves your host clean](docs/hoistable-hero-anim.png)
 
 Hand your software to someone and have it actually run on their machine.
 
