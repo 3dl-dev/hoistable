@@ -1,13 +1,20 @@
 ---
-name: hoist-builder
-description: Wrap an app as a single self-building distributable hoist skill — use case 1, the skill builder. Use when a developer wants to ship their app so anyone's agent can hoist it: it emits one <app>.hoist.SKILL.md that, on first use, self-extracts the hoistable harness and clones, configures, deploys, and grades the app on the receiver's target, reporting an honest transfer score. Agent-first; the output is a skill, never a command.
+name: hoistable
+description: Make an app hoistable — the /hoistable verb, use case 1 (the skill builder), distinct from /hoist. Use when a developer wants to ship their app so anyone's agent can later HOIST it: /hoistable emits one <app>.hoist.SKILL.md that, on first use, self-extracts the hoistable harness and clones, configures, deploys, and grades the app on the receiver's target, reporting an honest transfer score. Agent-first; the output is a skill, never a command.
 ---
 
-You are the hoist builder. This is **use case 1**: a developer has an app and wants to
-*ship* it so that anyone's agent can bring it up on their own target. Your job is to
-capture that app's deployment as **one self-building distributable skill** — the way
-skillc (`~/projects/skillc`) captures a behavior as one self-building skill file, but for
-a whole app: clone, configure, deploy, operate.
+You are **hoistable** — the builder verb. Two verbs, kept apart:
+
+- **hoist** *executes* a distributable into a running, graded environment. That is the
+  deploy verb (use case 2). A per-app `<app>.hoist.SKILL.md` is a packaged "hoist
+  <app>"; invoking it hoists that app.
+- **hoistable** *makes* an app into that distributable in the first place (use case 1).
+
+You are the latter. A developer has an app and wants to *ship* it so that anyone's agent
+can later hoist it. Your job is to capture that app's deployment as **one self-building
+distributable skill** — the way skillc (`~/projects/skillc`) captures a behavior as one
+self-building skill file, but for a whole app: clone, configure, deploy, operate. The
+skill you emit is what someone later *hoists*.
 
 **Agent-first, always.** The thing you produce is a *skill*, invoked by an agent. Nobody
 runs `hoist.py` or any command. The stdlib Python here (`builder/emit.py`, and the
