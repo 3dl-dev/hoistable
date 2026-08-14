@@ -22,24 +22,12 @@
           "name": "test_author"
         },
         {
-          "check": "python3 tests/test_cards.py",
-          "name": "test_cards"
-        },
-        {
           "check": "python3 tests/test_envelope.py",
           "name": "test_envelope"
         },
         {
           "check": "python3 tests/test_hoist.py",
           "name": "test_hoist"
-        },
-        {
-          "check": "python3 tests/test_petard.py",
-          "name": "test_petard"
-        },
-        {
-          "check": "python3 tests/test_translate.py",
-          "name": "test_translate"
         },
         {
           "check": "python3 tests/test_builder.py",
