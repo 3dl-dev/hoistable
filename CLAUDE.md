@@ -32,6 +32,19 @@ not need steering; the shape is fundamental, not stylistic.
    petard) delivered *through* that skill so users can fully exploit the software, not
    merely install it. The three usage modes are in `docs/operator-model.md`.
 
+   **Build the skill; the work happens in the user's session, not ours.** The product is a
+   recipe the *receiver's* agent runs, in *their* session, with *their* environment and
+   context, doing the work THERE. You are never writing a general program in our session
+   that must run in any user's environment. That is impossible, and it is the single
+   mistake that keeps recurring, here and in arlo and in agent-dyno. The generality lives
+   in the receiver agent's in-context judgment, never in code we wrote to be "general
+   enough." Catch yourself writing software meant to run across users, importing another
+   project's modules to run its logic in *our* process, or making a thing "general enough
+   to run anywhere": stop, that is software, not a skill. Composing another operator means
+   the skill tells the receiver's agent to INVOKE it (for example `arlo restart the
+   cluster`), not to import its library. Integration is at the skill or CLI surface in the
+   user's session, never the library surface in ours.
+
    **The builder nests, do not flatten it.** The builder's output is itself a
    *self-building* skill: on first use a receiver agent self-extracts a verified harness
    from the pin, then hoists and grades the app. So the thing under test is never just
@@ -125,6 +138,12 @@ not need steering; the shape is fundamental, not stylistic.
   emitted skill. Grade the agent-first path before you claim the real thing works.
 - Shipping a recipe that names one backend/substrate/profile the target could resolve
   several ways → you fixed, not narrowed. Keep it resolved at the user's runtime.
+- Building software in our session that is "general enough" to run in any user, or
+  importing another project's modules to run its logic in our process (the operate.py
+  trap) → stop: the product is a skill the *receiver's* agent runs in *their* session.
+  Compose another operator as a skill or CLI the receiver invokes (`arlo restart the
+  cluster`), never a library you import. The work is done there, in their context, not
+  here.
 
 ## Working here
 
@@ -134,5 +153,12 @@ not need steering; the shape is fundamental, not stylistic.
   it against reality, real dind, a real cluster, a real sandbox, not a mock of the
   thing under test. Substrate tests are gated on the mechanism being present and assert
   the honest cannot-build path when it is absent; they never skip.
-- Full suite: `for t in tests/test_*.py; do python3 "$t"; done` (the dind / k3s /
-  systemd tests each take 15-70s of real infra time).
+- **The grade that matters is the product grade, not the suite.** The `.py` tests
+  (`for t in tests/test_*.py; do python3 "$t"; done`) check the neutral core's MECHANICS.
+  They are fast green signals for the enforcement code, not the objective, and a green
+  suite with an ungraded product is the exact altitude confound to catch. The objective is
+  the ouroboros: an agent, given only an emitted skill, self-extracts, hoists, and grades
+  the app on a real target in a real session, and the honest transfer score over that whole
+  tower is the loss function. When you want to know if the product works, run that. The
+  written altitude rules have no teeth until that agent-driven grade is a committed,
+  runnable objective that outranks the suite.
