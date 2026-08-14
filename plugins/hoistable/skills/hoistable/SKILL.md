@@ -1,176 +1,120 @@
 ---
-name: hoist-hoistable
-description: Hoist hoistable onto your target — on first use, self-extract the hoistable harness and clone, configure, deploy, and grade hoistable, reporting an honest transfer score. Agent-first; no commands.
+name: hoistable
+description: Make an app hoistable — the /hoistable verb, use case 1 (the skill builder), distinct from /hoist. Use when a developer wants to ship their app so anyone's agent can later HOIST it: /hoistable emits one <app>.hoist.SKILL.md that, on first use, self-extracts the hoistable harness and clones, configures, deploys, and grades the app on the receiver's target, reporting an honest transfer score. Agent-first; the output is a skill, never a command.
 ---
 
-# This skill hoists hoistable before it reports hoistable is up
+## Get the hoistable toolchain (self-extract, once)
 
-You are about to bring up **hoistable** from a *recipe*, not from a finished instance. The
-skill ships hoistable as source: a carried recipe plus the pin to its harness, like a
-self-extracting archive that carries both its contents and the unpacker. Before you tell
-anyone hoistable is running, HOIST it against **this** target and GRADE it honestly. This is
-agent-first — you do the work in-loop; nobody runs a command line. The material is the
-carried recipe, the binds, the checks, and the acceptance in the sections below.
+This skill ships as source: it carries the pin to the hoistable toolchain and the recipe
+to unpack it, like a self-extracting archive. Before you do anything else, self-extract
+the toolchain on this target — and only after verifying it.
 
-Two roles run through this. The **author** wrapped hoistable as this skill on their machine.
-The **receiver** is whoever installs it — a different target, whose substrate, secrets,
-and paths you resolve here. You work so the receiver reaches a real, graded hoistable — or an
-honest reason it could not, never a silent success.
+1. Read the toolchain pin below (`version`, `url`, `sha256`).
+2. Fetch the tarball at `url`, compute its sha256, and confirm it equals the pin's
+   `sha256`. If it does not, STOP — never unpack or run an unverified toolchain.
+3. Extract the verified tarball. It yields the neutral-core toolchain you *invoke*:
+   `builder/emit.py` (the deterministic skill emitter), `release/build_release.py` (build
+   a harness kit to pin), and the harness itself — `envelope/` (the enforced grader:
+   isolation, honest grade, teardown), `hoist/` (discovery + pin resolution), and the
+   `operators/`. None of this is a command a user runs; it is enforcement you call.
 
-## Hoist recipe (run before your first report that hoistable is up)
+Because you checked the sha256 by hand before unpacking, nothing unverified executes.
+With the toolchain extracted, follow the method below.
 
-1. **Cache / idempotency.** If hoistable is already hoisted on this target in this session (a
-   prior graded namespace exists, or a resolution is recorded here), reuse it, emit the
-   Reusing line, and skip to step 6. Do not re-deploy over a live instance.
-
-2. **Resolve the binds.** For each entry in the binds section, probe this target for the
-   matching capability, and resolve the isolation substrate to the required strength the
-   carried recipe names. If a *required* bind has no match here, or no substrate meets the
-   required strength, STOP, deploy nothing, and report cannot-build naming the missing one.
-   Never guess and never substitute. If you cannot positively confirm a required bind,
-   treat it as missing.
-
-3. **Self-extract the harness (the bootstrap).** The carried recipe carries an
-   `operators` pin (`version`, `url`, `sha256`) — but the harness that runs the hoist
-   lives *inside* that kit, so you unpack it yourself first, and only after verifying it.
-   There is no `pins.py` to call yet; getting it is this step. Do exactly this:
-   (a) fetch the tarball at the pin `url`; (b) compute its sha256 and confirm it equals
-   the pin's `sha256` — if it does not, STOP, report cannot-build (tampered or wrong kit),
-   and never unpack or run an unverified tarball; (c) extract the verified tarball — that
-   unpack IS the self-extraction, and it yields the harness: `hoist/{hoist.py,pins.py}`,
-   `envelope/{envelope.py,substrate.py}`, and the develop/preflight/sysop/petard
-   operators. From here the extracted kit drives: its `hoist.py` runs the graded pass and
-   its `pins.py` re-verifies the kit into the version cache. Because you checked the
-   tarball's sha256 by hand before unpacking, nothing unverified ever executes.
-
-4. **Know early, then deploy.** Run preflight first — it deploys nothing. If it says
-   cannot-build, stop at the door and give the user the named reason. Otherwise run the
-   full graded pass through the neutral-core grader (`envelope`), which *enforces* the
-   invariants: a runner-owned isolated namespace (non-destructive onboarding), and
-   teardown. You never re-run hoistable's own singular deployment onto a live host.
-
-5. **Grade.** The acceptance checks rebuild on THIS target. Compute the honest transfer
-   score — how many of the acceptance checks passed, N of M — and name every check that did
-   not transfer. Because acceptance runs against the real target, this score is honest, not
-   a memory of the author's run.
-
-6. **Report** the outcome in one line, using one of the templates below. Never let a design
-   read as a running system; if it did not transfer, say what did not.
-
-7. **Hand off.** Hand the user to the operators the carried recipe includes (develop,
-   sysop, petard) so they can *exploit* hoistable — extend it, operate it, keep it running
-   lights-out — not merely have it installed.
-
-Before your first report, state in one line what happened, only one line, and do not
-narrate the loop, using one of these templates:
-- "Built hoistable. Acceptance transferred N of M on this target. Ready."
-- "Built hoistable, but N of M acceptance checks did not transfer here: [the specific checks]."
-- "Cannot build hoistable: this target is missing [the named bind or substrate strength]."
-- "Reusing the hoistable hoist from earlier this session. Ready."
-
-The failure to avoid: reporting hoistable is up because the recipe *looks* right. It is up only
-when it deployed and its acceptance transferred on this target. Grade it, then report what
-you measured.
-
-## The carried recipe (the authority; the operators pin travels with it)
+### Toolchain pin
 
 ```json
 {
-  "_authored_by": "hoist author (self-hosting reference: hoistable's own Layer 2 config)",
-  "app": "hoistable",
-  "binds": [
-    {
-      "name": "git",
-      "probe": "git --version",
-      "required": true
-    },
-    {
-      "name": "python3",
-      "probe": "python3 --version",
-      "required": true
-    }
-  ],
-  "default_profile": "default",
-  "operators": {
-    "sha256": "b90443e62cd83a05bc733fa32927bc7f62092ca099aeb579d47780a376309dbf",
-    "url": "https://github.com/3dl-dev/hoistable/releases/download/operators-v0.4.0/hoistable-operators-0.4.0.tgz",
-    "version": "0.4.0"
-  },
-  "profiles": {
-    "default": {
-      "acceptance": [
-        {
-          "check": "python3 tests/test_author.py",
-          "name": "test_author"
-        },
-        {
-          "check": "python3 tests/test_cards.py",
-          "name": "test_cards"
-        },
-        {
-          "check": "python3 tests/test_envelope.py",
-          "name": "test_envelope"
-        },
-        {
-          "check": "python3 tests/test_hoist.py",
-          "name": "test_hoist"
-        },
-        {
-          "check": "python3 tests/test_petard.py",
-          "name": "test_petard"
-        },
-        {
-          "check": "python3 tests/test_translate.py",
-          "name": "test_translate"
-        },
-        {
-          "check": "python3 tests/test_builder.py",
-          "name": "test_builder"
-        }
-      ],
-      "bringup": [
-        {
-          "name": "no-build",
-          "run": "true"
-        }
-      ],
-      "health": [
-        {
-          "check": "test -e .",
-          "name": "clone-present"
-        }
-      ],
-      "isolation": {
-        "none": true,
-        "why": "hermetic: runs the project's own tests in a throwaway clone; starts no daemons, binds no host ports, writes no shared state"
-      }
-    }
-  },
-  "source": {
-    "clone": "https://github.com/3dl-dev/hoistable.git",
-    "dir": "hoistable"
-  }
+  "version": "0.5.0",
+  "url": "https://github.com/3dl-dev/hoistable/releases/download/operators-v0.5.0/hoistable-operators-0.5.0.tgz",
+  "sha256": "93c02cedd7bd66a8afcfdd547fc95bb830fe6ce1699ca009917f8551b4200ad5"
 }
 ```
 
-## Binds (resolve these on the target; a missing required one is cannot-build)
+---
 
-- `git` (required) — probe: `git --version`
-- `python3` (required) — probe: `python3 --version`
-- isolation substrate: none required — this profile is hermetic (hermetic: runs the project's own tests in a throwaway clone; starts no daemons, binds no host ports, writes no shared state).
+You are **hoistable** — the builder verb. Two verbs, kept apart:
 
-## Checks (invariants every hoist obeys)
+- **hoist** *executes* a distributable into a running, graded environment. That is the
+  deploy verb (use case 2). A per-app `<app>.hoist.SKILL.md` is a packaged "hoist
+  <app>"; invoking it hoists that app.
+- **hoistable** *makes* an app into that distributable in the first place (use case 1).
 
-- **Non-destructive onboarding.** The hoist lands in a runner-owned isolated namespace (its own name, ports, storage); a deploying profile that declares no isolation is refused; teardown always runs. You never re-run hoistable's own singular deployment onto a live host.
-- **No silent success.** hoistable is graded on the real target; a hoist that cannot say it worked says what did not transfer. A design never reads as a running system.
-- **Verified harness.** The operator kit is run only after its sha256 matches the carried pin; a tampered or unreachable kit is cannot-build, named.
+You are the latter. A developer has an app and wants to *ship* it so that anyone's agent
+can later hoist it. Your job is to capture that app's deployment as **one self-building
+distributable skill** — the way skillc (`~/projects/skillc`) captures a behavior as one
+self-building skill file, but for a whole app: clone, configure, deploy, operate. The
+skill you emit is what someone later *hoists*.
 
-## Acceptance (the held-back transfer test; the honest score)
+**Agent-first, always.** The thing you produce is a *skill*, invoked by an agent. Nobody
+runs `hoist.py` or any command. The stdlib Python here (`builder/emit.py`, and the
+harness the emitted skill pins) is neutral-core *enforcement* — you invoke it; it is
+never the product. If you catch yourself telling a developer to "run" something, stop.
 
-- `test_author`: `python3 tests/test_author.py`
-- `test_cards`: `python3 tests/test_cards.py`
-- `test_envelope`: `python3 tests/test_envelope.py`
-- `test_hoist`: `python3 tests/test_hoist.py`
-- `test_petard`: `python3 tests/test_petard.py`
-- `test_translate`: `python3 tests/test_translate.py`
-- `test_builder`: `python3 tests/test_builder.py`
+## What you produce
+
+One file, `<app>.hoist.SKILL.md`, a self-extracting archive: it carries the app's Layer 2
+recipe and the pin to the harness, plus the receiver-side hoist recipe stamped at the
+top. Its sections, in this fixed order (emitted by `builder/emit.py`):
+
+1. Frontmatter (`name: hoist-<app>`, description).
+2. The stamped hoist recipe (`builder/seed/hoist-rebuild.md`, verbatim) — the
+   receiver-side bootstrap.
+3. The carried recipe (the app's config inlined, self-pinning) — the authority.
+4. Binds — what the receiver resolves on their target (a missing required one is
+   cannot-build).
+5. Checks — the invariants every hoist obeys.
+6. Acceptance — the held-back transfer test that yields the honest score.
+
+## The carry / bind split (the one judgment that matters)
+
+Same discipline as skillc. For every dependency the app's deployment leans on, decide:
+
+- **Carry** it when a different value on the receiver would make the deploy *wrong* — the
+  bringup steps, the health and acceptance checks, the profile shape, the operator pin.
+  These define what "up" means, so they travel inlined in the carried recipe. Turning one
+  into a blank to fill locally ships a broken skill.
+- **Bind** it when it is genuinely local and must differ per receiver — the isolation
+  substrate (their docker / cluster), secrets (by reference, never value), target paths.
+  The receiver resolves these at hoist time. Declare each in plain words in the binds.
+
+When you cannot tell whether something defines the deploy or is genuinely local, **ask
+the developer**. Do not guess the boundary.
+
+## Procedure
+
+1. **Get the app's Layer 2 recipe.** If it has a config, read it. If not, author one first
+   with the `hoist` skill (its author mode), grounding the acceptance checks in what "it
+   works" actually means for this app — a machine cannot infer that.
+2. **Narrow, don't fix.** The recipe should offer the receiver the *sensible, still-
+   resolved* options (which substrate strengths are viable, which profile), never bake one
+   in. A hardcoded substrate is the smell (see CLAUDE.md: narrow ≠ fix).
+3. **Pin the harness.** Point the emit at the operators pin (a Layer 0 release `{version,
+   url, sha256}`), so the emitted skill self-extracts a *verified* harness on the receiver.
+   Absent a pin, the skill still emits but runs the local kit — dev only, not a shippable
+   artifact.
+4. **Emit.** Invoke the neutral core: `emit.emit_skill(app_dir, pin)` assembles the file
+   deterministically. Review that the carried recipe, binds, and acceptance read honestly.
+5. **Grade the whole stack (the loss function).** Do not ship on looks. Prove the emitted
+   skill hoists: extract its carried recipe (`emit.extract_config`) and run it through the
+   grader on a clean target (`hoist.hoist`), reaching BUILT with an honest transfer score —
+   or an honest cannot-build. This grades emit → self-extract → clone → deploy → grade end
+   to end, not just the app's compose. A skill that has not been graded over the whole
+   stack is not shippable.
+6. **Hand the developer the file.** They distribute it however they like — drop it in a
+   skills folder, a repo's `.claude/skills/`, a release. A receiver installs it and their
+   agent invokes it; on first use it self-extracts and hoists, agent-first.
+
+## The recursion
+
+Hoistable is its own first consumer here too: the builder emits **hoistable's own** hoist
+skill, and hoisting *that* proves the builder against itself. Then the same builder emits
+each app's skill — agent-dyno, honcho, EAF — and wrapping them in the recursion is what
+puts the whole shipping mechanism, not just each app's deploy, under the honest grade.
+
+## Neutral core vs this skill
+
+This `SKILL.md` is the builder in its Claude Code form; the method ports to other *agent*
+harnesses behind a thin adapter. `builder/emit.py` is the neutral core you call to
+*assemble* the file reproducibly; `builder/seed/hoist-rebuild.md` is the receiver-side
+recipe it stamps. Neither is a driver anyone runs — the channel is the emitted skill.

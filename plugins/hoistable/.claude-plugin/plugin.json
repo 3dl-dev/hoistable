@@ -1,4 +1,4 @@
 {
   "name": "hoistable",
-  "description": "Hoistable itself as a self-building hoist skill: on first use your agent self-extracts the verified harness and hoists the hoistable framework onto your target, graded. The marketplace shipping itself."
+  "description": "The builder verb \u2014 /hoistable: make your app into a self-building distributable hoist skill (self-extracts the toolchain, emits <app>.hoist.SKILL.md, graded over the whole stack)."
 }

@@ -4,19 +4,25 @@
     "name": "Chris Baron",
     "email": "baron@3dl.dev"
   },
-  "description": "Self-hoisting software as skills: install a skill and your agent brings the app up on your own target, graded honestly. Agent-first — no commands. Includes hoistable itself.",
+  "description": "Self-hoisting software as skills, agent-first. Two verbs: hoistable makes an app into a distributable hoist skill; hoist runs a distributable into a running, graded environment. Plus ready-to-hoist apps.",
   "plugins": [
     {
       "name": "hoistable",
       "source": "./plugins/hoistable",
-      "description": "Hoistable itself, shipped as a self-building hoist skill: on first use your agent self-extracts the verified harness and hoists the hoistable framework onto your target, graded. The marketplace includes itself.",
-      "version": "0.4.0"
+      "description": "The builder verb — /hoistable. Make your app into a self-building distributable hoist skill: self-extract the toolchain, then emit <app>.hoist.SKILL.md, graded over the whole stack. What someone later hoists.",
+      "version": "0.5.0"
+    },
+    {
+      "name": "hoist",
+      "source": "./plugins/hoist",
+      "description": "The deploy verb — /hoist. Run a distributable (a config, or an <app>.hoist.SKILL.md) into a running, graded environment on your target. Self-extracts the enforced harness; deploys non-destructively and grades honestly.",
+      "version": "0.5.0"
     },
     {
       "name": "honcho",
       "source": "./plugins/honcho",
-      "description": "Honcho, shipped as a self-building hoist skill: your agent self-extracts the harness, resolves an isolation substrate, and deploys + grades honcho on your target with an honest transfer score.",
-      "version": "0.4.0"
+      "description": "Honcho, ready to hoist: on first use your agent self-extracts the harness, resolves an isolation substrate, and deploys + grades honcho on your target with an honest transfer score.",
+      "version": "0.5.0"
     }
   ]
 }

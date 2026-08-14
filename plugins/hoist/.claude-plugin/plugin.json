@@ -1,0 +1,4 @@
+{
+  "name": "hoist",
+  "description": "The deploy verb \u2014 /hoist: run a distributable into a running, graded environment. Self-extracts the enforced harness; non-destructive."
+}
