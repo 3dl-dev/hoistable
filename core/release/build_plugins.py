@@ -2,7 +2,7 @@
 """Regenerate the committed plugin skills from their single source.
 
 The `plugins/` SKILL.md files are BUILD ARTIFACTS, copied from the canonical sources
-(`builder/SKILL.md`, `hoist/SKILL.md`) with only the plugin skill name set in the
+(`builder/SKILL.md`, `hoist/SKILL.md`, `optimize-loop/SKILL.md`) with only the plugin skill name set in the
 frontmatter. Committing the generated copy is required for the marketplace to serve it,
 but it must never be hand-edited: edit the source and re-run this. This kills the drift
 hazard of two copies maintained by hand.
@@ -33,6 +33,7 @@ def _assemble(src_rel, skill_name):
 PLUGIN_SKILLS = [
     ("builder/SKILL.md", "build", "plugins/hoistable/skills/build/SKILL.md"),
     ("hoist/SKILL.md", "run", "plugins/hoistable/skills/run/SKILL.md"),
+    ("optimize-loop/SKILL.md", "optimize", "plugins/hoistable/skills/optimize/SKILL.md"),
 ]
 
 

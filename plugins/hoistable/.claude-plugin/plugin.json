@@ -1,4 +1,4 @@
 {
   "name": "hoistable",
-  "description": "The Hoistable tools. build turns your app into a self-installing skill; run installs and grades one."
+  "description": "The Hoistable tools. build turns your app into a self-installing skill; run installs and grades one; optimize runs, scores, and patches a skill to climb its loss."
 }

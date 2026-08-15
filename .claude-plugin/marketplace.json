@@ -9,8 +9,8 @@
     {
       "name": "hoistable",
       "source": "./plugins/hoistable",
-      "description": "build a self-installing skill for your app (/hoistable:build); run one someone made (/hoistable:run).",
-      "version": "0.7.0"
+      "description": "build a self-installing skill for your app (/hoistable:build); run one someone made (/hoistable:run); optimize a skill by running, scoring, and patching it (/hoistable:optimize).",
+      "version": "0.8.0"
     }
   ]
 }
