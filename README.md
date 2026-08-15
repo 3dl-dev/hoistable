@@ -1,5 +1,7 @@
 # Hoistable
 
+![hoistable: hand your coding agent one skill file and it stands the app up in isolation, grades it, and leaves it running for you](docs/hoistable-hero-anim.png)
+
 Hand your software to someone and have it actually run on their machine.
 
 Software works where you built it and breaks everywhere else. The config is different, a service is missing, a port is taken. Whoever installs it ends up fixing all that by hand. A prebuilt package doesn't help. It just hides the breakage until the thing is already running wrong.
