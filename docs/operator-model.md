@@ -59,7 +59,7 @@ choice with it. Backed out.)
 Two plugin marketplaces, agent-first (see `docs/marketplace.md` and the README for the commands).
 
 - **The tools** live in `3dl-dev/hoistable` as one plugin, `hoistable`, with two skills: `/hoistable:build` (make your app a self-installing skill) and `/hoistable:run` (run a recipe). This is the only place our name shows.
-- **A built app** is one self-contained `SKILL.md`. It carries the app's recipe inlined and a pin to the harness, and on first use a receiver agent self-extracts the harness, deploys, and grades. The developer chooses the plugin name, the skill verb, and the wording; the defaults carry none of our naming.
+- **A built app** is one self-contained `SKILL.md`. It carries the app's recipe inlined and the hoist discipline as prose; on first use a receiver agent follows it, deploys the app in its isolation, grades it, and leaves it running for the user. It carries nothing to fetch or run. The developer chooses the plugin name, the skill verb, and the wording; the defaults carry none of our naming.
 - **A developer ships it from their own repo** (a one-plugin marketplace the build step scaffolds), or lists it in the shared tap `3dl-dev/hoistables`. Either way, `build` touches nothing of ours: no index, no `examples/` here, no commit to this repo. The output is one file in the developer's hands.
 
 The operators (develop, preflight, sysop, petard) travel inside the built skill so the user can operate what they deployed, not merely install it.

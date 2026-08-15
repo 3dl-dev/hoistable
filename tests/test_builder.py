@@ -97,16 +97,20 @@ class EmitShape(unittest.TestCase):
         self.assertTrue(skill.startswith("---\nname: up\n"))
         self.assertNotIn("hoist", "\n".join(skill.splitlines()[:4]).lower())
 
-    def test_stamps_the_honest_grade_discipline_as_prose(self):
+    def test_stamps_the_hoist_discipline_as_prose(self):
         app_dir, _ = _toy_app_dir("toy")
         text = emit.emit_skill(app_dir)
         # the discipline is stamped verbatim, with <app> and <verb> resolved
         self.assertIn("This skill sets toy up before it reports toy is up", text)
-        self.assertIn("## The honest-grade discipline", text)
+        self.assertIn("## The hoist discipline", text)
         self.assertIn("deploy it against", text)      # the neutral verb, not "hoist it"
         for step in ("Binds gate", "Resolve the isolation", "Preflight",
-                     "held-back", "Always tear down", "cannot-build"):
+                     "held-back", "Land it", "cannot-build"):
             self.assertIn(step, text)
+        # the OBJECTIVE is a running app, not a teardown of what the user asked for
+        self.assertIn("leave toy running", text)
+        self.assertIn("to sysop to keep it up", text)
+        self.assertNotIn("teardown always runs", text)   # teardown is not the success path
         # binds, checks, acceptance all present
         self.assertIn("## Binds", text)
         self.assertIn("## Checks", text)

@@ -1,0 +1,269 @@
+
+[agent] I'll start by reading the skill file that was shared with me.
+  | 1	---
+  | 2	name: deploy
+  | 3	description: "Set up and run honcho on this machine, then self-test it and report honestly what worked. It ships as a recipe your agent follows here, in this session: it brings honcho up in a sandbox, grades it, and tears it down clean."
+  | 4	---
+  | 5	
+  | 6	# This skill sets honcho up before it reports honcho is up
+  | 7	
+  | 8	You are about to bring **honcho** up from a *recipe*, not from a finished instance. This
+  | 9	skill carries honcho as source: the recipe below (its binds, isolation, bringup, health,
+  | 10	and acceptance) is everything you need. You do the work **here, in this session, on this
+  | 11	target**, with ordinary tools you already have (git, the container runtime, a shell). You
+  | 12	fetch and run no toolchain and no program of anyone else's: the discipline below is yours
+  | 13	to follow, in context. Nobody runs a command line; you are the one who hoists honcho.
+  | 14	
+  | 15	Two roles run through this. The **author** packaged honcho as this skill on their machine.
+  | 16	The **receiver** is you, on a different target, whose substrate, secrets, and paths you
+  | 17	resolve here. Work so the receiver reaches a real, graded hon
+
+[agent] I'll follow the honest-grade discipline in order. Let me start with the binds gate and environment probing.
+
+$ echo "=== docker bind probe ==="; docker version --format '{{.Server.Version}}' 2>&1; echo "=== docker info ==="; docker info >/dev/null 2>&1 && echo "daemon reachable" || echo "daemon NOT reachable"; echo "=== docker compose ==="; docker compose version 2>&1 | head -1; echo "=== git ==="; git --version 2>&1; echo "=== curl ==="; curl --version 2>&1 | head -1
+  | === docker bind probe ===
+  | 29.7.2-1
+  | === docker info ===
+  | daemon reachable
+  | === docker compose ===
+  | Docker Compose version 2.40.3+ds1-0ubuntu1~24.04.1
+  | === git ===
+  | git version 2.43.0
+  | === curl ===
+  | curl 8.5.0 (x86_64-pc-linux-gnu) libcurl/8.5.0 OpenSSL/3.0.13 zlib/1.3 brotli/1.1.0 zstd/1.5.5 libidn2/2.3.7 libpsl/0.21.2 (+libidn2/2.3.7) libssh/0.10.6/openssl/zlib nghttp2/1.59.0 librtmp/2.3 OpenLDAP/2.6.10
+
+[agent] Docker bind present, daemon reachable. Now resolve the required **environmental** isolation. The recipe requires a sandbox a deploy cannot escape (docker-in-docker). Let me stand up the strongest one the target offers.
+
+$ echo "=== check we can run privileged (needed for dind) ==="; docker run --rm --privileged alpine:latest sh -c 'echo privileged-ok; ls /dev/fuse 2>/dev/null; true' 2>&1 | head -5; echo "=== pull dind image ==="; docker pull docker:dind 2>&1 | tail -3
+  | === check we can run privileged (needed for dind) ===
+  | privileged-ok
+  | /dev/fuse
+  | === pull dind image ===
+  | Digest: sha256:12e683a161823b2a839aeea999b9d960e6e1f9a97b1679ad6b441982e2d9cf07
+  | Status: Downloaded newer image for docker:dind
+  | docker.io/library/docker:dind
+
+[agent] Privileged works, dind image pulled. Standing up the environmental sandbox: a docker-in-docker container. All following steps run *inside* it, so no honcho state ever touches the host.
+
+$ SANDBOX=honcho-dind-sandbox
+# clean any stale one
+docker rm -f "$SANDBOX" >/dev/null 2>&1 || true
+# start dind daemon container, isolated storage, no host port publishing
+docker run -d --privileged --name "$SANDBOX" \
+  -e DOCKER_TLS_CERTDIR="" \
+  docker:dind dockerd --host=unix:///var/run/docker.sock >/dev/null 2>&1
+echo "started $SANDBOX, waiting for inner daemon..."
+for i in $(seq 1 30); do
+  if docker exec "$SANDBOX" docker info >/dev/null 2>&1; then echo "inner daemon up after ${i}s"; break; fi
+  sleep 1
+done
+echo "=== inner daemon version ==="
+docker exec "$SANDBOX" docker version --format '{{.Server.Version}}' 2>&1
+echo "=== inner tools ==="
+docker exec "$SANDBOX" sh -c 'docker compose version 2>&1 | head -1; git --version 2>&1 || echo NO-GIT; which curl || echo NO-CURL'
+  | started honcho-dind-sandbox, waiting for inner daemon...
+  | inner daemon up after 1s
+  | === inner daemon version ===
+  | 29.7.2
+  | === inner tools ===
+  | Docker Compose version v5.4.0
+  | git version 2.54.0
+  | NO-CURL
+
+[agent] Inner daemon up with git and compose. curl is missing inside the sandbox; I'll add it (the health/acceptance probes use curl against localhost:8000 inside the sandbox).
+
+$ docker exec honcho-dind-sandbox sh -c 'apk add --no-cache curl >/dev/null 2>&1 && curl --version | head -1 || echo CURL-INSTALL-FAILED'
+  | curl 8.21.0 (x86_64-alpine-linux-musl) libcurl/8.21.0 OpenSSL/3.5.7 zlib/1.3.2 brotli/1.2.0 zstd/1.5.7 c-ares/1.34.8 libidn2/2.3.8 libpsl/0.21.5 nghttp2/1.69.0
+
+[agent] Now step 4: preflight. Clone honcho source *inside* the sandbox, then run preflight probes.
+
+$ docker exec honcho-dind-sandbox sh -c '
+cd /root
+git clone --depth 1 https://github.com/plastic-labs/honcho 2>&1 | tail -3
+echo "=== cloned, listing relevant files ==="
+cd honcho
+ls docker-compose.yml.example .env.template 2>&1
+echo "=== preflight: docker-daemon-reachable ==="
+docker info >/dev/null 2>&1 && echo "PREFLIGHT-OK: daemon reachable" || echo "PREFLIGHT-FAIL"
+'
+  | Cloning into 'honcho'...
+  | === cloned, listing relevant files ===
+  | .env.template
+  | docker-compose.yml.example
+  | === preflight: docker-daemon-reachable ===
+  | PREFLIGHT-OK: daemon reachable
+
+[agent] Clone succeeded, preflight passes. Let me inspect the compose and env before deploying.
+
+$ docker exec honcho-dind-sandbox sh -c 'cd /root/honcho; echo "=== docker-compose.yml.example ==="; cat docker-compose.yml.example; echo "=== .env.template (first 60 lines) ==="; head -60 .env.template'
+  | === docker-compose.yml.example ===
+  | # Honcho Docker Compose
+  | #
+  | # Usage:
+  | #   cp docker-compose.yml.example docker-compose.yml
+  | #   cp .env.template .env  # edit with your provider config
+  | #   docker compose up -d --build
+  | #   INSTALL_LANCEDB=true docker compose up -d --build  # optional local vector store
+  | #
+  | # By default, ports are bound to 127.0.0.1 (localhost only).
+  | # For development, uncomment the source mounts and monitoring services below.
+  | 
+  | services:
+  |   api:
+  |     build:
+  |       context: .
+  |       dockerfile: Dockerfile
+  |       args:
+  |         INSTALL_LANCEDB: ${INSTALL_LANCEDB:-false}
+  |     entrypoint: ["sh", "docker/entrypoint.sh"]
+  |     depends_on:
+  |       database:
+  |         condition: service_healthy
+  |       redis:
+  |         condition: service_healthy
+  |     ports:
+  |       - "127.0.0.1:8000:8000"
+  |     healthcheck:
+  |       test:
+  |         [
+  |           "CMD",
+  |           "/app/.venv/bin/python",
+  |           "-c",
+  |           "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2).read()",
+  |         ]
+  |       interval: 5s
+  |       timeout: 5s
+  |       
+
+[agent] Compose binds loopback-only inside the sandbox, bringup starts only database/redis/api (not the LLM deriver). Now step 5: deploy inside the sandbox.
+
+$ docker exec honcho-dind-sandbox sh -c '
+cd /root/honcho
+echo "=== bringup: copy-compose ==="
+cp docker-compose.yml.example docker-compose.yml && echo ok
+echo "=== bringup: copy-env ==="
+cp .env.template .env 2>/dev/null || true; echo ok
+echo "=== bringup: compose-up-minimal-3 (build + wait, up to 600s) ==="
+docker compose up -d --build --wait --wait-timeout 600 database redis api 2>&1 | tail -30
+echo "EXIT=$?"
+' 2>&1
+  | === bringup: copy-compose ===
+  | ok
+  | === bringup: copy-env ===
+  | ok
+  | === bringup: compose-up-minimal-3 (build + wait, up to 600s) ===
+  |  Volume honcho_redis-data Created 
+  |  Volume honcho_redis-data Created 
+  |  Volume honcho_lancedb-data Created 
+  |  Volume honcho_lancedb-data Created 
+  |  Volume honcho_pgdata Created 
+  |  Volume honcho_pgdata Created 
+  |  Network honcho_default Created 
+  |  Network honcho_default Created 
+  |  Container honcho-redis-1 Creating 
+  |  Container honcho-database-1 Creating 
+  |  Container honcho-redis-1 Created 
+  |  Container honcho-database-1 Created 
+  |  Container honcho-api-1 Creating 
+  |  Container honcho-api-1 Created 
+  |  Container honcho-database-1 Starting 
+  |  Container honcho-redis-1 Starting 
+  |  Container honcho-database-1 Started 
+  |  Container honcho-redis-1 Started 
+  |  Container honcho-database-1 Waiting 
+  |  Container honcho-redis-1 Waiting 
+  |  Container honcho-database-1 Healthy 
+  |  Container honcho-redis-1 Healthy 
+  |  Container honcho-api-1 Starting 
+  |  Container honcho-api-1 Started 
+  |  Container honcho-database-1 Waiting 
+  |  Container honcho-redis-1 Waiting 
+  |  Container honcho-api-1 Wait
+
+[agent] All three services came up healthy. Now step 6: health checks, then held-back acceptance.
+
+$ docker exec honcho-dind-sandbox sh -c '
+cd /root/honcho
+echo "=== HEALTH 1: database pg_isready ==="
+docker compose exec -T database pg_isready -U postgres && echo "H1-PASS" || echo "H1-FAIL"
+echo "=== HEALTH 2: redis ping ==="
+docker compose exec -T redis redis-cli ping && echo "H2-PASS" || echo "H2-FAIL"
+echo "=== HEALTH 3: api /health ==="
+curl -fsS http://localhost:8000/health && echo "  H3-PASS" || echo "H3-FAIL"
+'
+  | === HEALTH 1: database pg_isready ===
+  | /var/run/postgresql:5432 - accepting connections
+  | H1-PASS
+  | === HEALTH 2: redis ping ===
+  | PONG
+  | H2-PASS
+  | === HEALTH 3: api /health ===
+  | {"status":"ok"}  H3-PASS
+
+[agent] All 3 health checks pass. Now the held-back acceptance checks (the honest transfer score).
+
+$ docker exec honcho-dind-sandbox sh -c '
+cd /root/honcho
+echo "=== ACCEPTANCE 1: health-reports-ok ==="
+curl -fsS http://localhost:8000/health | grep -qi ok && echo "A1-PASS" || echo "A1-FAIL"
+echo "=== ACCEPTANCE 2: openapi-served ==="
+curl -fsS http://localhost:8000/openapi.json | grep -q "\"openapi\"" && echo "A2-PASS" || echo "A2-FAIL"
+echo "=== ACCEPTANCE 3: workspace-crud-roundtrip ==="
+RESP=$(curl -fsS -X POST http://localhost:8000/v3/workspaces -H "Content-Type: application/json" -d "{\"name\":\"hoist-smoke\"}")
+echo "response: $RESP"
+echo "$RESP" | grep -q hoist-smoke && echo "A3-PASS" || echo "A3-FAIL"
+'
+  | === ACCEPTANCE 1: health-reports-ok ===
+  | A1-PASS
+  | === ACCEPTANCE 2: openapi-served ===
+  | A2-PASS
+  | === ACCEPTANCE 3: workspace-crud-roundtrip ===
+  | response: {"id":"hoist-smoke","metadata":{},"configuration":{},"created_at":"2026-08-14T23:07:31.065210Z"}
+  | A3-PASS
+
+[agent] All 3 acceptance checks pass (3 of 3). Now step 7: teardown, destroy the sandbox, verify no residue on the host.
+
+$ echo "=== teardown inside sandbox (compose down -v) ==="
+docker exec honcho-dind-sandbox sh -c 'cd /root/honcho && docker compose down -v 2>&1 | tail -5'
+echo "=== destroy the environmental sandbox itself ==="
+docker rm -f honcho-dind-sandbox 2>&1
+echo "=== HOST residue check: any honcho containers/volumes/networks/images on host? ==="
+echo "-- containers --"; docker ps -a --filter "name=honcho" --format '{{.Names}}' | grep -v '^$' || echo "none"
+echo "-- volumes --"; docker volume ls --format '{{.Name}}' | grep -i honcho || echo "none"
+echo "-- networks --"; docker network ls --format '{{.Name}}' | grep -i honcho || echo "none"
+echo "-- pgvector/redis8/dind leftovers as running containers --"; docker ps -a --format '{{.Image}} {{.Names}}' | grep -Ei 'pgvector|redis:8|dind|honcho' || echo "none"
+  | === teardown inside sandbox (compose down -v) ===
+  |  Volume honcho_redis-data Removing 
+  |  Volume honcho_lancedb-data Removed 
+  |  Volume honcho_pgdata Removed 
+  |  Volume honcho_redis-data Removed 
+  |  Network honcho_default Removed 
+  | === destroy the environmental sandbox itself ===
+  | honcho-dind-sandbox
+  | === HOST residue check: any honcho containers/volumes/networks/images on host? ===
+  | -- containers --
+  | none
+  | -- volumes --
+  | none
+  | -- networks --
+  | none
+  | -- pgvector/redis8/dind leftovers as running containers --
+  | pgvector/pgvector:pg16 enterprise-ai-ragvector-1
+  | pgvector/pgvector:pg16 enterprise-ai-29582297-ragvector-1
+
+[agent] The two `pgvector/pgvector:pg16` / `enterprise-ai-*` containers are pre-existing and unrelated (pg16, different project name; honcho used pg15). No honcho residue: no honcho containers, volumes, or networks on the host, and the dind sandbox is destroyed. Host is clean.
+
+Summary of the run, following the skill alone:
+
+- **Binds gate:** docker present (server 29.7.2), daemon reachable. Required bind satisfied.
+- **Isolation:** recipe requires `environmental`. Stood up a privileged docker-in-docker sandbox (`docker:dind`) and ran every step inside it, so no honcho state could reach host floor. Compose additionally binds loopback-only.
+- **Preflight:** cloned `github.com/plastic-labs/honcho` inside the sandbox; docker-daemon-reachable probe passed. Nothing deployed at the door.
+- **Deploy:** `docker compose up -d --build --wait` for database + redis + api (not the LLM deriver). All three reached Healthy.
+- **Health:** 3/3 (postgres pg_isready, redis PONG, api `/health` = `{"status":"ok"}`).
+- **Acceptance (held-back transfer score): 3/3** — health-reports-ok, openapi-served, workspace-crud-roundtrip (POST created workspace id `hoist-smoke`).
+- **Teardown:** `compose down -v` then destroyed the dind sandbox; verified zero honcho residue on host.
+
+I used only the shared skill file plus standard tools (git, docker, curl); the only clone was the app's own source, as the recipe directs. I did not touch `/home/baron/projects/hoistable` or fetch anything of the harness author's.
+
+Skill file: `/tmp/hoist-skills.fAC2x6/honcho/honcho.SKILL.md`
+  | Structured output provided successfully

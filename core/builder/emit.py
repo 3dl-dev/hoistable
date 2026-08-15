@@ -35,9 +35,10 @@ _FENCE = "```"
 # honest-grade discipline the receiver agent follows, restated as guarantees.
 CHECKS = [
     "**Non-destructive.** The deploy lands in an isolated namespace or sandbox (its own "
-    "name, ports, storage); a profile that declares no isolation is refused; teardown "
-    "always runs and leaves no residue on the host. It never re-runs <app>'s own "
-    "singular deployment onto a live host.",
+    "name, ports, storage) that is the app's home; a profile that declares no isolation "
+    "is refused. On success the app is left running there; teardown runs only on failure "
+    "or a proof-only run, and never touches state outside the app's own isolation. It "
+    "never re-runs <app>'s own singular deployment onto a live host.",
     "**No silent success.** <app> is graded on the real target; a run that cannot say it "
     "worked says what did not transfer. A design never reads as a running system.",
     "**No toolchain, no command line.** You hoist <app> in this session with ordinary "
@@ -81,8 +82,8 @@ def _default_description(app):
     """The app-first default, carrying none of our naming."""
     return (f"Set up and run {app} on this machine, then self-test it and report "
             f"honestly what worked. It ships as a recipe your agent follows here, in "
-            f"this session: it brings {app} up in a sandbox, grades it, and tears it "
-            f"down clean.")
+            f"this session: it brings {app} up in isolation, grades it, and leaves it "
+            f"running for you.")
 
 
 def emit_skill(app_dir_or_config, seed_path=SEED, config_name="config.json",

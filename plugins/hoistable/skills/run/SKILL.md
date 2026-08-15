@@ -38,12 +38,16 @@ You carry this out yourself, in-session, against this target:
 4. **Deploy (the install gate)** in the isolated namespace or sandbox only, never onto a
    live host.
 5. **Health, then held-back acceptance.** Count health N of M; only if fully up, run the
-   acceptance checks. Their pass fraction is the honest transfer score, whether it really
-   works here, not just came up.
-6. **Always tear down, then verify no residue** left on the host.
-7. **Report one honest line:** built (transferred N of M), honest-failure (say what did not
-   transfer), or cannot-build (name the missing bind or isolation strength). Never let a
-   design read as a running system.
+   acceptance checks against the running instance. Their pass fraction is the honest
+   transfer score, whether it really works here, not just came up.
+6. **Land it, or clean up honestly.** The objective is a running, usable app. On success,
+   LEAVE it running in its isolation (that is what the user asked for, not residue) and note
+   where it is reachable. Tear down only if it failed (clean up the broken instance), or if
+   you were asked merely to prove it would work. Either way, leave nothing outside the app's
+   own isolation.
+7. **Report one honest line:** built (transferred N of M, running at [where]), honest-failure
+   (say what did not transfer; partial instance torn down), or cannot-build (name the missing
+   bind or isolation strength). Never let a design read as a running system.
 
 ## Hand off
 

@@ -21,8 +21,10 @@ Isolation is resolved, not fixed. The profile names the strength it needs, and t
 runner resolves the strongest rung the target offers:
 
 - **The host floor**: you own a fresh namespace per hoist (its own name, ports,
-  storage), verify it is empty before deploy, and tear it down after. This is a
-  same-host copy, so the isolation is only as strong as that namespace.
+  storage) and verify it is empty before deploy. When you stand the app up for real this
+  namespace is its home and stays running; you tear it down only for a proof/grade run or
+  a failed deploy, never the live instance. It is a same-host copy, so the isolation is
+  only as strong as that namespace.
 - **An environmental substrate** (`isolation.require: "environmental"`): the deploy
   runs inside a throwaway container, VM, or cluster Job where it cannot reach host
   state whatever the config declares, resolved down a ladder (docker-in-docker today).
