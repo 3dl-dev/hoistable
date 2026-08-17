@@ -27,6 +27,7 @@ import sys
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 SEED = os.path.join(_HERE, "seed", "hoist-rebuild.md")
+DELTA_DIR = os.path.join(_HERE, "seed", "deltas")
 
 CARRIED_HEADER = "## The carried recipe (the authority; everything the hoist needs travels here)"
 _FENCE = "```"
@@ -86,8 +87,85 @@ def _default_description(app):
             f"running for you.")
 
 
+def _receiver_delta(receiver, delta_dir=DELTA_DIR):
+    """Load the model-conditioned delta overlay for `receiver`, or None when no profile
+    is given (the canonical, unconditioned emit). The delta is PROSE ONLY, resolved at
+    emit time (narrow, not fix, per CLAUDE.md section 3 / skill-gradient-descent.md
+    section 6): it is stamped onto the shared core for a known-weak receiver, never
+    baked into the default recipe. Raises if a profile is named but has no overlay file,
+    so a typo'd `--receiver` fails loudly instead of silently emitting the canonical
+    skill under a variant's name."""
+    if not receiver:
+        return None
+    path = os.path.join(delta_dir, f"{receiver}.md")
+    if not os.path.isfile(path):
+        raise ValueError(f"no delta overlay for receiver {receiver!r} (looked for {path})")
+    with open(path) as f:
+        lines = [ln for ln in f.read().splitlines()
+                 if not ln.strip().startswith("<!-- target:")]
+    return "\n".join(lines).strip()
+
+
+def _target_meta(receiver, delta_dir=DELTA_DIR):
+    """Parse the target triple a receiver delta declares about itself, from a
+    `<!-- target: model=.. agent=.. reference=.. -->` line in the overlay. The delta file
+    stays the single source of truth for its own triple. Returns {} when absent."""
+    if not receiver:
+        return {}
+    path = os.path.join(delta_dir, f"{receiver}.md")
+    if not os.path.isfile(path):
+        return {}
+    with open(path) as f:
+        for line in f:
+            s = line.strip()
+            if s.startswith("<!-- target:") and s.endswith("-->"):
+                body = s[len("<!-- target:"):-len("-->")]
+                return dict(tok.split("=", 1) for tok in body.split() if "=" in tok)
+    return {}
+
+
+def _environment(profile):
+    """The environment axis of the target, read from the profile's isolation requirement."""
+    iso = profile.get("isolation") or {}
+    if iso.get("none"):
+        return "none (hermetic)"
+    require = iso.get("require")
+    if require and require not in ("host", "namespace", None):
+        return require
+    return "host"
+
+
+def _provenance_header(app, profile, receiver, target_meta, graded):
+    """A neutral provenance block: it declares the artifact's cross-compile facts (target
+    triple, deltas applied, the transfer grade it earned) and carries NO vendor branding,
+    so the emitted skill stays the developer's own product (the unbranded-output invariant)
+    while still self-declaring that it is a per-target cross-compiled artifact. The grade
+    defaults to the honest blank; a real number appears only when an episode measured it."""
+    env = _environment(profile)
+    if not receiver:
+        return "\n".join([
+            "> **Skill provenance.**",
+            f"> - **App:** {app}",
+            f"> - **Build:** reference (canonical): strong-model default, model unpinned; "
+            f"environment `{env}`",
+            "> - **Deltas applied:** none (shared core only)",
+        ])
+    model = target_meta.get("model", receiver)
+    agent = target_meta.get("agent", "unspecified")
+    reference = target_meta.get("reference", "the reference build")
+    return "\n".join([
+        "> **Skill provenance.** Cross-compiled from a source recipe for one target.",
+        f"> - **App:** {app}",
+        f"> - **Cross-compiled for:** model `{model}` · agent `{agent}` · environment `{env}`",
+        f"> - **Reference substrate:** `{reference}` (the build this target is graded against)",
+        f"> - **Deltas applied:** `{receiver}`",
+        f"> - **Transfer grade (this target):** {graded or 'not yet measured'}",
+    ])
+
+
 def emit_skill(app_dir_or_config, seed_path=SEED, config_name="config.json",
-               skill_name=None, description=None):
+               skill_name=None, description=None, receiver=None, delta_dir=DELTA_DIR,
+               graded=None):
     """Assemble the self-contained skill text for an app. `app_dir_or_config` is a
     directory holding config.json, or a path to a config file. Deterministic: identical
     inputs -> identical bytes. The emitted skill carries nothing to fetch or run.
@@ -97,7 +175,16 @@ def emit_skill(app_dir_or_config, seed_path=SEED, config_name="config.json",
     invoke and the words their users read. Defaults carry none of our naming (no
     "hoist", no "hoistable"), so a developer who does nothing still ships something
     app-first, with us invisible. Our own conventions (e.g. a `hoist` skill name in our
-    tap) are just callers passing those values in."""
+    tap) are just callers passing those values in.
+
+    `receiver` is the model-conditioned receiver profile (e.g. "qwen-opencode"). Default
+    None emits the canonical, unconditioned skill, byte-identical to before this
+    parameter existed. When set, the matching overlay in `seed/deltas/<receiver>.md` is
+    stamped onto the shared core (core-then-delta): the receiver never chooses a mode,
+    the developer or optimizer picks the profile matching the intended receiver at emit
+    time. This resolves, it does not fork: the shared core and carried recipe are
+    unchanged either way, only an extra prose section is appended for a known-weak
+    receiver (see docs/design/skill-gradient-descent.md section 6)."""
     path = app_dir_or_config
     if os.path.isdir(path):
         path = os.path.join(path, config_name)
@@ -113,8 +200,16 @@ def emit_skill(app_dir_or_config, seed_path=SEED, config_name="config.json",
     with open(seed_path) as f:
         stamped = f.read().strip().replace("<app>", app).replace("<verb>", skill_name)
 
+    delta = _receiver_delta(receiver, delta_dir)
+    if delta:
+        delta = delta.replace("<app>", app).replace("<verb>", skill_name)
+
     carried = json.dumps(config, indent=2, sort_keys=True)
     checks = "\n".join(f"- {c.replace('<app>', app)}" for c in CHECKS)
+    # Neutral provenance: the artifact self-declares its cross-compile facts (target triple,
+    # deltas, earned grade) with no vendor branding, so it stays the developer's own product.
+    header = _provenance_header(app, profile, receiver, _target_meta(receiver, delta_dir),
+                               graded)
 
     parts = [
         "---",
@@ -124,7 +219,13 @@ def emit_skill(app_dir_or_config, seed_path=SEED, config_name="config.json",
         f"description: {json.dumps(description)}",
         "---",
         "",
+        header,
+        "",
         stamped,
+    ]
+    if delta:
+        parts += ["", delta]
+    parts += [
         "",
         CARRIED_HEADER,
         "",
@@ -210,8 +311,14 @@ def main(argv=None):
         description="assemble an app's Layer 2 recipe as a self-contained hoist SKILL")
     ap.add_argument("app_dir", help="dir with config.json (or a config.json path)")
     ap.add_argument("--out", default=None, help="output path (default: <app>.hoist.SKILL.md)")
+    ap.add_argument("--receiver", default=None,
+                     help="model-conditioned receiver profile (e.g. qwen-opencode); "
+                          "default emits the canonical, unconditioned skill")
+    ap.add_argument("--graded", default=None,
+                     help="stamp a measured transfer grade into the provenance header "
+                          "(default: 'not yet measured'); pass only a grade a real episode earned")
     args = ap.parse_args(argv)
-    text = emit_skill(args.app_dir)
+    text = emit_skill(args.app_dir, receiver=args.receiver, graded=args.graded)
     cfg = extract_config(text)
     out = args.out or f"{cfg.get('app', 'app')}.hoist.SKILL.md"
     with open(out, "w") as f:

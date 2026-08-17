@@ -1,0 +1,12 @@
+{
+  "_comment": "hoistable adopts skillc's cross-compile target profiles BY PIN (single source of truth = skillc; no drift). To bump: re-copy from skillc, update ref + sha256, re-run tests/test_pin.py. Do not edit the vendored files here; edit in skillc and re-pin.",
+  "skillc_repo": "baron-3dl/skillc",
+  "skillc_ref": "4d7f2ffa4c268c04ecd6bfcae8e664b688b53989",
+  "skillc_tag": "v0.2.3",
+  "adopted": {
+    "core/builder/seed/deltas/qwen-opencode.md": {
+      "from": "seed/targets/qwen-opencode.md",
+      "sha256": "e0fa3fb9ca8cc443bceff11d8cd4934b733b7af549516b6645a776c803126ae5"
+    }
+  }
+}

@@ -149,6 +149,47 @@ class EmitShape(unittest.TestCase):
         text = emit.emit_skill(app_dir)
         self.assertIn("isolation substrate: none required", text)
 
+    def test_canonical_provenance_is_neutral_and_unbranded(self):
+        # the emitted skill self-declares its build facts but carries NO vendor brand, so it
+        # stays the developer's own product (the unbranded-output invariant).
+        app_dir, _ = _toy_app_dir(self, "toy")
+        text = emit.emit_skill(app_dir)
+        self.assertIn("> **Skill provenance.**", text)
+        self.assertIn("**Deltas applied:** none", text)
+        self.assertIn("reference (canonical)", text)
+        self.assertNotIn("hoistable", text.lower())      # no vendor name
+        self.assertNotIn("emit.py", text.lower())        # no build-tool name
+
+    def test_variant_provenance_declares_the_target_triple(self):
+        # a receiver delta declares its own triple; the header names model/agent/env and
+        # the raw metadata comment is stripped from the shipped body.
+        app_dir, _ = _toy_app_dir(self, "toy")
+        dd = tempfile.mkdtemp(prefix="deltas-")
+        self.addCleanup(shutil.rmtree, dd, ignore_errors=True)
+        with open(os.path.join(dd, "toybot.md"), "w") as f:
+            f.write("<!-- target: model=toy-7b agent=toycode reference=claude -->\n"
+                    "Extra guidance for the toybot receiver.\n")
+        text = emit.emit_skill(app_dir, receiver="toybot", delta_dir=dd)
+        self.assertIn("Cross-compiled for:** model `toy-7b` · agent `toycode`", text)
+        self.assertIn("Reference substrate:** `claude`", text)
+        self.assertIn("**Deltas applied:** `toybot`", text)
+        self.assertNotIn("<!-- target:", text)           # metadata stripped from the body
+        self.assertNotIn("hoistable", text.lower())      # still unbranded
+
+    def test_transfer_grade_defaults_to_unmeasured_and_graded_stamps_verbatim(self):
+        # honest by construction: no number unless a real episode measured one.
+        app_dir, _ = _toy_app_dir(self, "toy")
+        dd = tempfile.mkdtemp(prefix="deltas-")
+        self.addCleanup(shutil.rmtree, dd, ignore_errors=True)
+        with open(os.path.join(dd, "toybot.md"), "w") as f:
+            f.write("<!-- target: model=toy-7b agent=toycode reference=claude -->\nx\n")
+        ungraded = emit.emit_skill(app_dir, receiver="toybot", delta_dir=dd)
+        self.assertIn("Transfer grade (this target):** not yet measured", ungraded)
+        graded = emit.emit_skill(app_dir, receiver="toybot", delta_dir=dd,
+                                graded="2/2 vs 2/2 (n=3)")
+        self.assertIn("Transfer grade (this target):** 2/2 vs 2/2 (n=3)", graded)
+        self.assertNotIn("not yet measured", graded)
+
     def test_extract_rejects_a_non_hoist_skill(self):
         with self.assertRaises(ValueError):
             emit.extract_config("---\nname: something-else\n---\n\njust prose\n")
